@@ -24,6 +24,8 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
   const [userMarker, setUserMarker] = useState<google.maps.Marker | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<google.maps.Marker | null>(null);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
 
   const initializeMap = useCallback(() => {
     console.log("📦 initializeMap called");
@@ -61,7 +63,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     setMapInstance(map);
 
     // Add click listener for simple markers
-    map.addListener('click', (event: google.maps.MapMouseEvent) => {
+    map.addListener('click', async (event: google.maps.MapMouseEvent) => {
       if (event.latLng) {
         console.log("🖱️ Map clicked:", { lat: event.latLng.lat(), lng: event.latLng.lng() });
 
@@ -97,6 +99,10 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
         // Store initial selected location and marker
         setSelectedLocation({ lat: event.latLng.lat(), lng: event.latLng.lng() });
         setSelectedMarker(marker);
+
+        // Get address for selected location
+        const address = await getAddressFromCoordinates(event.latLng.lat(), event.latLng.lng());
+        setSelectedAddress(address);
 
         // Add drag start listener for visual feedback
         marker.addListener('dragstart', () => {
@@ -144,7 +150,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     // Auto-detect user location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const currentLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -154,6 +160,10 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           setUserLocation(currentLocation);
           map.setCenter(currentLocation);
           map.setZoom(15);
+
+          // Get address for user location
+          const address = await getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
+          setUserAddress(address);
 
           // Add user location marker - enterprise-grade design
           const newUserMarker = new window.google.maps.Marker({
@@ -196,6 +206,59 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     }
   }, [clientName]);
 
+  // Function to get address from coordinates with Arabic support
+  const getAddressFromCoordinates = useCallback(async (lat: number, lng: number): Promise<string> => {
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+
+      // Try to get Arabic address first
+      const arabicResult = await geocoder.geocode({
+        location: { lat, lng },
+        language: 'ar' // Arabic language
+      });
+
+      // Also get English address as fallback
+      const englishResult = await geocoder.geocode({
+        location: { lat, lng },
+        language: 'en' // English language
+      });
+
+      // Use Arabic result if available, otherwise fallback to English
+      const result = arabicResult.results[0] || englishResult.results[0];
+
+      if (result) {
+        const addressComponents = result.address_components;
+        const streetNumber = addressComponents.find(comp => comp.types.includes('street_number'))?.long_name || '';
+        const route = addressComponents.find(comp => comp.types.includes('route'))?.long_name || '';
+        const neighborhood = addressComponents.find(comp => comp.types.includes('neighborhood'))?.long_name || '';
+        const sublocality = addressComponents.find(comp => comp.types.includes('sublocality_level_1'))?.long_name || '';
+        const locality = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || '';
+
+        // Build readable address
+        let address = '';
+        if (streetNumber && route) {
+          address += `${streetNumber} ${route}`;
+        } else if (route) {
+          address += route;
+        }
+
+        if (neighborhood || sublocality) {
+          address += address ? `, ${neighborhood || sublocality}` : (neighborhood || sublocality);
+        }
+
+        if (locality) {
+          address += address ? `, ${locality}` : locality;
+        }
+
+        return address || 'العنوان غير متوفر';
+      }
+      return 'العنوان غير متوفر';
+    } catch (error) {
+      console.log('📍 Geocoding error:', error);
+      return 'العنوان غير متوفر';
+    }
+  }, []);
+
   const loadGoogleMapsAPI = useCallback(() => {
     console.log("📦 Loading Google Maps API...");
 
@@ -216,7 +279,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_API_KEY;
     if (!apiKey) {
-      setError("Google Maps API key is missing");
+      setError("مفتاح Google Maps مفقود");
       return;
     }
 
@@ -231,7 +294,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     script.defer = true;
 
     script.onerror = () => {
-      setError("Failed to load Google Maps API");
+      setError("فشل في تحميل Google Maps API");
     };
 
     document.head.appendChild(script);
@@ -277,6 +340,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
       }
       setSelectedLocation(null);
       setSelectedMarker(null);
+      setSelectedAddress(null);
 
       // Recreate user marker if it doesn't exist or is not visible
       if (!userMarker || !userMarker.getMap()) {
@@ -375,6 +439,11 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                   <div className="text-xs text-gray-500 font-mono break-all">
                     {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
                   </div>
+                  {userAddress && (
+                    <div className="text-xs text-gray-600 font-medium">
+                      📍 {userAddress}
+                    </div>
+                  )}
                   {userLocation.accuracy && (
                     <div className="text-xs text-gray-400 font-mono">
                       ±{userLocation.accuracy.toFixed(1)}m accuracy
@@ -383,7 +452,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                 </div>
               ) : (
                 <div className="text-xs sm:text-sm text-gray-500">
-                  <span className="animate-pulse">📍 Detecting your location...</span>
+                  <span className="animate-pulse">📍 جاري تحديد موقعك...</span>
                 </div>
               )}
             </div>
@@ -397,6 +466,11 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                 <div className="text-xs text-blue-600 font-mono break-all">
                   {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                 </div>
+                {selectedAddress && (
+                  <div className="text-xs text-blue-500 font-medium">
+                    📍 {selectedAddress}
+                  </div>
+                )}
               </>
             ) : (
               <>
