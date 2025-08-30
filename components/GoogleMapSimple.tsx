@@ -20,7 +20,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
   const mapRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number; accuracy?: number } | null>(null);
   const [userMarker, setUserMarker] = useState<google.maps.Marker | null>(null);
 
   const initializeMap = useCallback(() => {
@@ -46,6 +46,13 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: 20, lng: 0 },
       zoom: 2,
+      zoomControl: false, // Disabled native zoom controls
+      mapTypeControl: true,
+      mapTypeControlOptions: {
+        position: window.google.maps.ControlPosition.TOP_LEFT
+      },
+      streetViewControl: false, // Disabled street view control
+      fullscreenControl: false // Disabled native fullscreen control
     });
 
     console.log("📦 Map created successfully!");
@@ -123,6 +130,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           const currentLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
           };
 
           setUserLocation(currentLocation);
@@ -270,6 +278,8 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           className="w-full h-64 sm:h-80 lg:h-96 rounded-lg border border-gray-300 shadow-inner"
           style={{ minHeight: '256px' }}
         />
+
+
       </div>
 
       {/* Card Footer */}
@@ -286,6 +296,11 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                   <div className="text-xs text-gray-500 font-mono break-all">
                     {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
                   </div>
+                  {userLocation.accuracy && (
+                    <div className="text-xs text-gray-400 font-mono">
+                      ±{userLocation.accuracy.toFixed(1)}m accuracy
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-xs sm:text-sm text-gray-500">
@@ -295,15 +310,51 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
             </div>
           </div>
 
-          {userLocation && (
+          <div className="flex items-center gap-2">
+            {/* Recenter Button - Primary Action */}
+            {userLocation && (
+              <button
+                onClick={recenterToUserLocation}
+                className="w-8 h-8 sm:w-10 sm:h-10 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110"
+                title="Recenter to your location"
+              >
+                <span className="text-lg sm:text-xl">🎯</span>
+              </button>
+            )}
+
+            {/* Zoom Controls - Secondary Actions */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) - 1)}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="Zoom Out"
+              >
+                <span className="text-sm sm:text-lg font-bold">−</span>
+              </button>
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) + 1)}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="Zoom In"
+              >
+                <span className="text-sm sm:text-lg font-bold">+</span>
+              </button>
+            </div>
+
+            {/* Fullscreen Toggle - Utility Action */}
             <button
-              onClick={recenterToUserLocation}
-              className="w-10 h-10 sm:w-12 sm:h-12 hover:bg-gray-700 text-white rounded-full transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110 self-end sm:self-auto"
-              title="Recenter to your location"
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen();
+                } else {
+                  document.documentElement.requestFullscreen();
+                }
+              }}
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+              title="Toggle Fullscreen"
             >
-              <span className="text-xl sm:text-2xl">🎯</span>
+              <span className="text-sm sm:text-lg">⛶</span>
             </button>
-          )}
+          </div>
         </div>
       </div>
     </div>
