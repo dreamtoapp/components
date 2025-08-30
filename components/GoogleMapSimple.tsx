@@ -261,17 +261,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
     };
   }, [userMarker, selectedMarker]);
 
-  // Debug function to check marker status
-  const debugMarkerStatus = useCallback(() => {
-    console.log('🔍 Debug Marker Status:');
-    console.log('📍 User Marker:', userMarker);
-    console.log('📍 User Marker Map:', userMarker?.getMap());
-    console.log('📍 User Marker Position:', userMarker?.getPosition());
-    console.log('📍 Selected Marker:', selectedMarker);
-    console.log('📍 Selected Marker Map:', selectedMarker?.getMap());
-    console.log('📍 Map Instance:', mapInstance);
-    console.log('📍 User Location:', userLocation);
-  }, [userMarker, selectedMarker, mapInstance, userLocation]);
+
 
   // Recenter function
   const recenterToUserLocation = useCallback(() => {
@@ -431,14 +421,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
               </button>
             )}
 
-            {/* Debug Button - Temporary */}
-            <button
-              onClick={debugMarkerStatus}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110"
-              title="Debug Marker Status"
-            >
-              <span className="text-sm">🔍</span>
-            </button>
+
 
             {/* Zoom Controls - Secondary Actions */}
             <div className="flex gap-1">
