@@ -77,7 +77,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
         const marker = new window.google.maps.Marker({
           position: event.latLng,
           map: map,
-          title: `${clientName} - Selected Location`,
+          title: `${clientName} - الموقع المحدد`,
           draggable: true,
           label: {
             text: "📍",
@@ -169,7 +169,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           const newUserMarker = new window.google.maps.Marker({
             position: currentLocation,
             map: map,
-            title: "Your Current Location",
+            title: "موقعك الحالي",
             label: {
               text: "📍",
               color: "#FFFFFF",
@@ -348,7 +348,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
         const newUserMarker = new window.google.maps.Marker({
           position: userLocation,
           map: mapInstance,
-          title: "Your Current Location",
+          title: "موقعك الحالي",
           label: {
             text: "📍",
             color: "#FFFFFF",
@@ -399,16 +399,50 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
   }
 
   return (
-    <div className={`${className} bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden max-w-4xl mx-auto`}>
+    <div className={`${className} bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden max-w-4xl mx-auto`} dir="rtl">
       {/* Card Header */}
       <div className="bg-transparent px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-full flex items-center justify-center">
-            <span className="text-xl sm:text-2xl text-gray-600">📍</span>
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-full flex items-center justify-center">
+              <span className="text-xl sm:text-2xl text-gray-600">📍</span>
+            </div>
+            <div className="text-right">
+              <h3 className="text-gray-800 font-bold text-lg sm:text-xl">محدد الموقع</h3>
+              <p className="text-gray-600 text-xs sm:text-sm font-medium">في حال موقعك غير محدد بدقة انقر على الخريطة لتحديد موقعك بدقة</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-gray-800 font-bold text-lg sm:text-xl">Location Selector</h3>
-            <p className="text-gray-600 text-xs sm:text-sm font-medium">Click to place, drag to adjust location</p>
+
+          {/* Mobile Controls - Only visible on mobile */}
+          <div className="flex items-center gap-1 sm:hidden">
+            {/* Recenter Button - Primary Action */}
+            {userLocation && (
+              <button
+                onClick={recenterToUserLocation}
+                className="w-8 h-8 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110"
+                title="العودة إلى موقعك"
+              >
+                <span className="text-lg">🎯</span>
+              </button>
+            )}
+
+            {/* Zoom Controls */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) + 1)}
+                className="w-8 h-8 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="تكبير"
+              >
+                <span className="text-sm font-bold">+</span>
+              </button>
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) - 1)}
+                className="w-8 h-8 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="تصغير"
+              >
+                <span className="text-sm font-bold">−</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -427,42 +461,58 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
       {/* Card Footer */}
       <div className="bg-transparent px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-          {/* Left Side - Current Location */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
-              <span className="text-gray-600 text-xs sm:text-sm">📍</span>
+          {/* Right Side - Controls - Desktop Only */}
+          <div className="hidden sm:flex items-center gap-2">
+            {/* Fullscreen Toggle - Utility Action */}
+            <button
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen();
+                } else {
+                  document.documentElement.requestFullscreen();
+                }
+              }}
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+              title="ملء الشاشة"
+            >
+              <span className="text-sm sm:text-lg">⛶</span>
+            </button>
+
+            {/* Zoom Controls - Secondary Actions */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) + 1)}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="تكبير"
+              >
+                <span className="text-sm sm:text-lg font-bold">+</span>
+              </button>
+              <button
+                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) - 1)}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
+                title="تصغير"
+              >
+                <span className="text-sm sm:text-lg font-bold">−</span>
+              </button>
             </div>
-            <div>
-              {userLocation ? (
-                <div className="text-xs sm:text-sm">
-                  <span className="text-gray-700 font-medium">Current Location:</span>
-                  <div className="text-xs text-gray-500 font-mono break-all">
-                    {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
-                  </div>
-                  {userAddress && (
-                    <div className="text-xs text-gray-600 font-medium">
-                      📍 {userAddress}
-                    </div>
-                  )}
-                  {userLocation.accuracy && (
-                    <div className="text-xs text-gray-400 font-mono">
-                      ±{userLocation.accuracy.toFixed(1)}m accuracy
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-xs sm:text-sm text-gray-500">
-                  <span className="animate-pulse">📍 جاري تحديد موقعك...</span>
-                </div>
-              )}
-            </div>
+
+            {/* Recenter Button - Primary Action */}
+            {userLocation && (
+              <button
+                onClick={recenterToUserLocation}
+                className="w-8 h-8 sm:w-10 sm:h-10 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110"
+                title="العودة إلى موقعك"
+              >
+                <span className="text-lg sm:text-xl">🎯</span>
+              </button>
+            )}
           </div>
 
           {/* Center - Location Status */}
           <div className="flex flex-col items-center text-center">
             {selectedLocation ? (
               <>
-                <span className="text-gray-700 font-medium text-xs">Selected Location:</span>
+                <span className="text-gray-700 font-medium text-xs">الموقع المحدد:</span>
                 <div className="text-xs text-blue-600 font-mono break-all">
                   {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                 </div>
@@ -474,61 +524,43 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
               </>
             ) : (
               <>
-                <span className="text-gray-700 font-medium text-xs">📍 At Current Location</span>
+                <span className="text-gray-700 font-medium text-xs">📍 في الموقع الحالي</span>
                 <div className="text-xs text-green-600 font-medium">
-                  Auto-detected
+                  تم الكشف تلقائياً
                 </div>
               </>
             )}
           </div>
 
-          {/* Right Side - Controls */}
-          <div className="flex items-center gap-2">
-            {/* Recenter Button - Primary Action */}
-            {userLocation && (
-              <button
-                onClick={recenterToUserLocation}
-                className="w-8 h-8 sm:w-10 sm:h-10 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110"
-                title="Recenter to your location"
-              >
-                <span className="text-lg sm:text-xl">🎯</span>
-              </button>
-            )}
-
-
-
-            {/* Zoom Controls - Secondary Actions */}
-            <div className="flex gap-1">
-              <button
-                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) - 1)}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
-                title="Zoom Out"
-              >
-                <span className="text-sm sm:text-lg font-bold">−</span>
-              </button>
-              <button
-                onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) + 1)}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
-                title="Zoom In"
-              >
-                <span className="text-sm sm:text-lg font-bold">+</span>
-              </button>
+          {/* Left Side - Current Location */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <span className="text-gray-600 text-xs sm:text-sm">📍</span>
             </div>
-
-            {/* Fullscreen Toggle - Utility Action */}
-            <button
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen();
-                } else {
-                  document.documentElement.requestFullscreen();
-                }
-              }}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-300 transition-all duration-200 flex items-center justify-center hover:shadow-md"
-              title="Toggle Fullscreen"
-            >
-              <span className="text-sm sm:text-lg">⛶</span>
-            </button>
+            <div className="text-right">
+              {userLocation ? (
+                <div className="text-xs sm:text-sm">
+                  <span className="text-gray-700 font-medium">الموقع الحالي:</span>
+                  <div className="text-xs text-gray-500 font-mono break-all">
+                    {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
+                  </div>
+                  {userAddress && (
+                    <div className="text-xs text-gray-600 font-medium">
+                      📍 {userAddress}
+                    </div>
+                  )}
+                  {userLocation.accuracy && (
+                    <div className="text-xs text-gray-400 font-mono">
+                      ±{userLocation.accuracy.toFixed(1)}م دقة
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs sm:text-sm text-gray-500">
+                  <span className="animate-pulse">📍 جاري تحديد موقعك...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
