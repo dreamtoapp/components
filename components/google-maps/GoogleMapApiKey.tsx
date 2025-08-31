@@ -370,6 +370,140 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
 
 
 
+  // Refresh user location function
+  const refreshUserLocation = useCallback(async () => {
+    if (!mapInstance) return;
+
+    // Show loading state
+    setUserLocation(null);
+    setUserAddress(null);
+    if (userMarker) {
+      userMarker.setMap(null);
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const currentLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          };
+
+          setUserLocation(currentLocation);
+          mapInstance.setCenter(currentLocation);
+          mapInstance.setZoom(15);
+
+          // Get address for user location
+          const address = await getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
+          setUserAddress(address);
+
+          // Add user location marker - enterprise-grade design
+          const newUserMarker = new window.google.maps.Marker({
+            position: currentLocation,
+            map: mapInstance,
+            title: "موقعك الحالي",
+            label: {
+              text: "📍",
+              color: "hsl(var(--foreground))",
+              fontWeight: "bold",
+              fontSize: "16px"
+            },
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: "hsl(var(--primary))", // Semantic primary color
+              fillOpacity: 0.9,
+              strokeColor: "hsl(var(--background))",
+              strokeWeight: 3,
+              scale: 16
+            },
+            zIndex: 1000,
+            animation: window.google.maps.Animation.BOUNCE
+          });
+
+          // Add pulsing effect for user location
+          setTimeout(() => {
+            newUserMarker.setAnimation(null);
+          }, 2000);
+
+          setUserMarker(newUserMarker);
+
+          // Update selected location to match new user location
+          setSelectedLocation(currentLocation);
+          setSelectedAddress(address);
+          setEditableAddress(address);
+
+          // Update selected marker
+          if (selectedMarker) {
+            selectedMarker.setMap(null);
+          }
+          const newSelectedMarker = new window.google.maps.Marker({
+            position: currentLocation,
+            map: mapInstance,
+            title: `${clientName} - الموقع المحدد`,
+            draggable: true,
+            label: {
+              text: "📍",
+              color: "hsl(var(--foreground))",
+              fontWeight: "bold",
+              fontSize: "14px"
+            },
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: "hsl(var(--destructive))", // Semantic destructive color
+              fillOpacity: 0.9,
+              strokeColor: "hsl(var(--background))",
+              strokeWeight: 2,
+              scale: 14
+            },
+            zIndex: 999
+          });
+
+          // Add drag listeners
+          newSelectedMarker.addListener('dragstart', () => {
+            newSelectedMarker.setIcon({
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: "hsl(var(--warning))", // Semantic warning color
+              fillOpacity: 0.9,
+              strokeColor: "hsl(var(--background))",
+              strokeWeight: 2,
+              scale: 16
+            });
+          });
+
+          newSelectedMarker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
+            if (dragEvent.latLng) {
+              newSelectedMarker.setIcon({
+                path: window.google.maps.SymbolPath.CIRCLE,
+                fillColor: "hsl(var(--destructive))", // Semantic destructive color
+                fillOpacity: 0.9,
+                strokeColor: "hsl(var(--background))",
+                strokeWeight: 2,
+                scale: 14
+              });
+
+              setSelectedLocation({
+                lat: dragEvent.latLng.lat(),
+                lng: dragEvent.latLng.lng()
+              });
+
+              getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
+                setSelectedAddress(newAddress);
+                setEditableAddress(newAddress);
+              });
+            }
+          });
+
+          setSelectedMarker(newSelectedMarker);
+        },
+        (error) => {
+          // Handle geolocation error
+          console.error('Geolocation error:', error);
+        }
+      );
+    }
+  }, [mapInstance, userMarker, selectedMarker, getAddressFromCoordinates, clientName]);
+
   // Recenter function
   const recenterToUserLocation = useCallback(() => {
     if (mapInstance && userLocation) {
@@ -541,14 +675,48 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                     <span className="text-primary text-lg">📍</span>
                   </div>
                   <div className="text-right min-w-0 flex-1">
-                    <h4 className="text-sm font-semibold text-foreground mb-2">
-                      الموقع التلقائي
-                      {userLocation && (
-                        <span className="text-xs font-mono text-muted-foreground ml-2">
-                          ({userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)})
-                        </span>
-                      )}
-                    </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-foreground">
+                        الموقع التلقائي
+                        {userLocation && (
+                          <span className="text-xs font-mono text-muted-foreground ml-2">
+                            ({userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)})
+                          </span>
+                        )}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {userLocation ? (
+                          <div className="flex items-center gap-1">
+                            {userLocation.accuracy && (
+                              <span className={`text-xs ${userLocation.accuracy <= 20
+                                ? 'text-green-500'
+                                : 'text-red-500'
+                                }`}>
+                                <div className={`w-2 h-2 rounded-full animate-pulse ${userLocation.accuracy <= 20 ? 'bg-green-500' : 'bg-red-500'
+                                  }`}></div>
+                                ±{userLocation.accuracy.toFixed(1)}م
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-yellow-600">
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                              جاري التحديد...
+                            </span>
+                          </div>
+                        )}
+                        <Button
+                          onClick={refreshUserLocation}
+                          size="icon"
+                          variant="ghost"
+                          title="تحديث الموقع"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="text-xs">🔄</span>
+                        </Button>
+                      </div>
+                    </div>
                     {userLocation ? (
                       <div className="space-y-2">
                         {userAddress && (
@@ -559,12 +727,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                             </div>
                           </div>
                         )}
-                        {userLocation.accuracy && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span>دقة: ±{userLocation.accuracy.toFixed(1)}م</span>
-                          </div>
-                        )}
+
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -583,14 +746,22 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                     <span className="text-destructive text-lg">📍</span>
                   </div>
                   <div className="text-right min-w-0 flex-1">
-                    <h4 className="text-sm font-semibold text-foreground mb-2">
-                      الموقع المحدد
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-foreground">
+                        الموقع المحدد
+                        {selectedLocation && (
+                          <span className="text-xs font-mono text-muted-foreground ml-2">
+                            ({selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)})
+                          </span>
+                        )}
+                      </h4>
                       {selectedLocation && (
-                        <span className="text-xs font-mono text-muted-foreground ml-2">
-                          ({selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)})
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                          <span className="text-xs text-muted-foreground">تم التحديد يدوياً</span>
+                        </div>
                       )}
-                    </h4>
+                    </div>
                     {selectedLocation ? (
                       <div className="space-y-2">
                         <div className="bg-muted/50 rounded px-3 py-2">
@@ -602,10 +773,6 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                             className="text-xs text-primary border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                             dir="rtl"
                           />
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                          <span>تم التحديد يدوياً</span>
                         </div>
                       </div>
                     ) : (
