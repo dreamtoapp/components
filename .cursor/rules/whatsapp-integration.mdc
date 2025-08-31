@@ -1,0 +1,31 @@
+# WhatsApp Integration Architecture
+
+## Folder Structure
+- Main UI: [app/whatsapp/page.tsx](mdc:app/whatsapp/page.tsx)
+- Helper files: [app/whatsapp/helpers/](mdc:app/whatsapp/helpers/)
+  - [types.ts](mdc:app/whatsapp/helpers/types.ts) - TypeScript interfaces
+  - [config.ts](mdc:app/whatsapp/helpers/config.ts) - Environment variables and constants
+  - [utils.ts](mdc:app/whatsapp/helpers/utils.ts) - Utility functions
+  - [hooks.ts](mdc:app/whatsapp/helpers/hooks.ts) - Custom React hooks
+- API Service: [actions/whatsapp-api.ts](mdc:actions/whatsapp-api.ts)
+
+## Key Patterns
+1. **Environment Variables**: Always use `process.env.NEXT_PUBLIC_WHATSAPP_*` for configuration
+2. **Error Handling**: Use try-catch with specific error messages for API failures
+3. **Logging**: Use `logDebug`, `logError`, `logSuccess` from utils for consistent debugging
+4. **Phone Numbers**: Format with `formatPhoneNumber()` utility (removes + prefix)
+5. **Templates**: Use `TEMPLATE_CONFIG` constants for template names and languages
+
+## Import Paths
+- From page.tsx: `import { ... } from './helpers/config'`
+- From hooks.ts: `import { WhatsAppApiService } from '../../../actions/whatsapp-api'`
+- From actions: `import { ... } from '../app/whatsapp/helpers/...'`
+
+## API Response Handling
+- Always validate `response.ok` before processing
+- Handle "Malformed access token" errors specifically
+- Use `WhatsAppApiResponse` and `WhatsAppApiError` interfaces
+description:
+globs:
+alwaysApply: true
+---

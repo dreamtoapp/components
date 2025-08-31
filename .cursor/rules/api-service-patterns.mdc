@@ -1,0 +1,46 @@
+# API Service Patterns
+
+## Service Class Structure
+- Use static methods for API calls
+- Implement private validation methods
+- Use consistent error handling patterns
+- Log all API requests and responses for debugging
+
+## HTTP Request Patterns
+```typescript
+const response = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(payload)
+});
+
+if (!response.ok) {
+  const error = await response.json();
+  throw new Error(error.error?.message || 'Request failed');
+}
+```
+
+## Configuration Management
+- Store API URLs and tokens in environment variables
+- Use `process.env.NEXT_PUBLIC_*` for client-side config
+- Validate configuration on service initialization
+- Provide fallback values for optional config
+
+## Error Handling
+- Catch network errors and API errors separately
+- Provide specific error messages for common issues
+- Log detailed error information for debugging
+- Return structured error responses
+
+## Response Processing
+- Always validate response status before processing
+- Use TypeScript interfaces for response types
+- Handle different response formats consistently
+- Transform API responses to match internal data structures
+description:
+globs:
+alwaysApply: true
+---

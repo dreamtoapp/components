@@ -1,0 +1,39 @@
+# Environment Configuration Patterns
+
+## Environment Variables
+- Use `NEXT_PUBLIC_` prefix for client-side variables
+- Store sensitive data like API tokens in environment variables
+- Provide fallback values for optional configuration
+- Validate required environment variables on startup
+
+## Configuration Structure
+```typescript
+export const CONFIG = {
+  API_TOKEN: process.env.NEXT_PUBLIC_API_TOKEN,
+  API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://api.example.com',
+  VERSION: process.env.NEXT_PUBLIC_VERSION || 'v1.0',
+  ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'production'
+};
+```
+
+## Validation Patterns
+- Check for missing required variables
+- Validate token length and format
+- Provide clear error messages for configuration issues
+- Use TypeScript interfaces for configuration objects
+
+## Security Best Practices
+- Never hardcode sensitive values in source code
+- Use environment-specific configuration files
+- Validate configuration before making API calls
+- Log configuration status (without sensitive data)
+
+## Development Setup
+- Create `.env.local` for local development
+- Document required environment variables
+- Provide example configuration files
+- Use different configurations for dev/staging/production
+description:
+globs:
+alwaysApply: true
+---

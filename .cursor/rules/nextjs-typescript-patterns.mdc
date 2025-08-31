@@ -1,0 +1,33 @@
+# Next.js + TypeScript Best Practices
+
+## Component Structure
+- Use `"use client"` directive for client components with state/effects
+- Import UI components from `@/components/ui/*`
+- Use Lucide React icons: `import { IconName } from "lucide-react"`
+
+## State Management
+- Use `useState` for local component state
+- Use `useCallback` for event handlers and API calls
+- Create custom hooks for complex state logic
+
+## TypeScript Patterns
+- Define interfaces in separate `types.ts` files
+- Use explicit prop interfaces for components
+- Avoid `any` type - use proper interfaces
+- Use discriminated unions for status states: `'sent' | 'delivered' | 'read' | 'failed'`
+
+## Error Handling
+- Use try-catch blocks for async operations
+- Display user-friendly error messages
+- Log errors to console for debugging
+- Use error boundaries for React components
+
+## UI Components
+- Use shadcn/ui components: Card, Button, Input, Badge, etc.
+- Follow consistent spacing with Tailwind classes
+- Use semantic color tokens: `text-foreground`, `text-muted-foreground`
+- Implement loading states with spinners and disabled buttons
+description:
+globs:
+alwaysApply: true
+---

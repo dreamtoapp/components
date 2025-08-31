@@ -849,6 +849,55 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           </div>
         </div>
       </div>
+
+      {/* Footer Section */}
+      <div className="border-t border-border bg-muted/30 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {selectedLocation ? (
+              <span>تم تحديد الموقع بنجاح</span>
+            ) : (
+              <span>يرجى تحديد موقعك على الخريطة</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Reset to user location
+                if (userLocation) {
+                  recenterToUserLocation();
+                }
+              }}
+              disabled={!userLocation}
+              className="text-xs"
+            >
+              إعادة تعيين
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                if (selectedLocation) {
+                  // Here you can add the logic to save the location
+                  console.log('Saving location:', {
+                    coordinates: selectedLocation,
+                    address: editableAddress,
+                    userLocation: userLocation
+                  });
+                  // You can add a toast notification or API call here
+                  alert('تم حفظ الموقع بنجاح!');
+                }
+              }}
+              disabled={!selectedLocation}
+              className="text-xs"
+            >
+              حفظ الموقع
+            </Button>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

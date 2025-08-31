@@ -9,26 +9,20 @@ export function Navbar() {
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 arabic-text">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo/Brand */}
-        <div className="flex items-center space-x-4">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold">DreamToApp</span>
-          </Link>
-        </div>
+
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
           <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
-            الرئيسية
+            لGoogle Maps
           </Link>
-          <Link href="/dark-mode-demo" className="text-sm font-medium transition-colors hover:text-primary">
-            الوضع المظلم
+          <Link href="/whatsapp" className="text-sm font-medium transition-colors hover:text-primary">
+            whatsapp
           </Link>
-          <Link href="/components" className="text-sm font-medium transition-colors hover:text-primary">
-            المكونات
+          <Link href="/email" className="text-sm font-medium transition-colors hover:text-primary">
+            Email
           </Link>
-          <Link href="/theming" className="text-sm font-medium transition-colors hover:text-primary">
-            التصميم
-          </Link>
+
         </div>
 
         {/* Right side - Theme Toggle */}

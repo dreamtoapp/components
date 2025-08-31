@@ -1,0 +1,41 @@
+# UI Component Patterns
+
+## Layout Structure
+- Use `min-h-screen bg-background` for full-page layouts
+- Center content with `max-w-4xl mx-auto`
+- Use `space-y-6` for consistent vertical spacing
+- Group related sections with `Card` components
+
+## Form Patterns
+- Use `Label` components with `htmlFor` attributes
+- Implement proper input validation and error states
+- Use `disabled` prop for loading states
+- Handle Enter key press for form submission
+
+## Status Indicators
+- Use `Badge` components for status display
+- Implement loading spinners: `animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full`
+- Use semantic colors: `text-green-600`, `text-red-600`, `text-blue-500`
+- Show/hide elements conditionally with `{condition && <Component />}`
+
+## Chat Interface
+- Use flexbox for message alignment: `justify-end` for user, `justify-start` for system
+- Implement message bubbles with rounded corners
+- Show timestamps and status icons
+- Use `overflow-y-auto` for scrollable chat containers
+
+## Button Patterns
+- Use `variant="outline"` for secondary actions
+- Use `size="sm"` for compact buttons
+- Group related buttons with `flex flex-wrap gap-2`
+- Disable buttons during loading states
+
+## Debug Information
+- Use `font-mono` for technical data display
+- Group debug info in collapsible sections
+- Use muted colors for secondary information
+- Provide troubleshooting steps in user-friendly format
+description:
+globs:
+alwaysApply: true
+---
