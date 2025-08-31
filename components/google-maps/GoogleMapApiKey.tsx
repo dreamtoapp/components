@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 
 interface GoogleMapProps {
   className?: string;
@@ -28,6 +29,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
   const [selectedMarker, setSelectedMarker] = useState<google.maps.Marker | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [editableAddress, setEditableAddress] = useState<string>("");
 
   const initializeMap = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -95,6 +97,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
         // Get address for selected location
         const address = await getAddressFromCoordinates(event.latLng.lat(), event.latLng.lng());
         setSelectedAddress(address);
+        setEditableAddress(address);
 
         // Add drag start listener for visual feedback
         marker.addListener('dragstart', () => {
@@ -183,6 +186,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           // Set default selected location to be the same as user location
           setSelectedLocation(currentLocation);
           setSelectedAddress(address);
+          setEditableAddress(address);
 
           // Create selected location marker at user location
           const selectedMarker = new window.google.maps.Marker({
@@ -241,6 +245,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
               // Get new address for dragged location
               getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
                 setSelectedAddress(newAddress);
+                setEditableAddress(newAddress);
               });
             }
           });
@@ -447,10 +452,11 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                 <span className="text-2xl text-primary">📍</span>
               </div>
               <div className="text-right">
-                <CardTitle className="text-2xl font-bold text-foreground">تحديد موقع العميل</CardTitle>
-                <CardDescription className="text-base text-muted-foreground mt-1">
-                  يرجى تحديد موقع العميل على الخريطة
-                </CardDescription>
+                <CardTitle className="text-2xl font-bold text-foreground">تحديد موقعك بعناية يسهل سرعة وصول منتجاتك</CardTitle>
+                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                  <span className="text-sm">💡</span>
+                  <span>انقر على الخريطة لتحديد الموقع</span>
+                </div>
               </div>
             </div>
 
@@ -509,133 +515,109 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
               )}
             </div>
           </div>
-
-          {/* Action Hint */}
-          <div className="flex justify-center">
-            <div className="inline-flex items-center gap-3 text-sm text-muted-foreground bg-muted/50 rounded-full px-4 py-2">
-              <span className="text-base">💡</span>
-              <span>يمكنك سحب العلامة لتعديل الموقع بدقة</span>
-            </div>
-          </div>
         </div>
       </CardHeader>
 
-      {/* Content Section */}
-      <CardContent className="p-0">
-        {/* Map Container */}
-        <div className="px-6 pb-6">
+      {/* Main Content - Column Layout */}
+      <div className="flex flex-col gap-6 p-6">
+        {/* Map Section - Top */}
+        <div className="w-full">
           <div
             ref={mapRefCallback}
-            className="w-full h-[400px] sm:h-[500px] lg:h-[600px] rounded-xl border border-border shadow-lg bg-muted/30"
+            className="w-full h-[400px] rounded-xl border border-border shadow-lg bg-muted/30"
             style={{ minHeight: '400px' }}
           />
         </div>
-      </CardContent>
 
-      {/* Footer Section */}
-      <div className="px-6 py-8 border-t border-border bg-muted/10">
-        <div className="space-y-6">
-          {/* Status Header */}
-          <div className="flex items-center justify-center">
-            {selectedLocation ? (
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 bg-destructive rounded-full animate-pulse"></div>
-                <span className="text-base font-semibold text-foreground">الموقع المحدد</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 bg-primary rounded-full animate-pulse"></div>
-                <span className="text-base font-semibold text-foreground">في الموقع الحالي</span>
-                <Badge variant="secondary" className="text-sm px-3 py-1">
-                  تم الكشف تلقائياً
-                </Badge>
-              </div>
-            )}
-          </div>
-
-          {/* Location Information Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Current Location Card */}
-            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary text-xl">📍</span>
-                </div>
-                <div className="text-right min-w-0 flex-1">
-                  <h4 className="text-base font-semibold text-foreground mb-3">الموقع الحالي</h4>
-                  {userLocation ? (
-                    <div className="space-y-3">
-                      <div className="bg-muted/50 rounded-lg px-4 py-3">
-                        <div className="text-sm text-muted-foreground mb-2">الإحداثيات</div>
-                        <div className="text-sm font-mono text-foreground break-all">
-                          {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
-                        </div>
-                      </div>
-                      {userAddress && (
-                        <div className="bg-muted/50 rounded-lg px-4 py-3">
-                          <div className="text-sm text-muted-foreground mb-2">العنوان</div>
-                          <div className="text-sm text-foreground truncate">
-                            📍 {userAddress}
+        {/* Location Information Panel - Bottom */}
+        <div className="w-full">
+          <div className="space-y-4">
+            {/* Location Cards Stack */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Current Location Card */}
+              <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-primary text-lg">📍</span>
+                  </div>
+                  <div className="text-right min-w-0 flex-1">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">
+                      الموقع التلقائي
+                      {userLocation && (
+                        <span className="text-xs font-mono text-muted-foreground ml-2">
+                          ({userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)})
+                        </span>
+                      )}
+                    </h4>
+                    {userLocation ? (
+                      <div className="space-y-2">
+                        {userAddress && (
+                          <div className="bg-muted/50 rounded px-3 py-2">
+                            <div className="text-xs text-muted-foreground mb-1">العنوان</div>
+                            <div className="text-xs text-foreground truncate">
+                              📍 {userAddress}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {userLocation.accuracy && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span>دقة: ±{userLocation.accuracy.toFixed(1)}م</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full"></div>
-                      <span>جاري تحديد موقعك...</span>
-                    </div>
-                  )}
+                        )}
+                        {userLocation.accuracy && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>دقة: ±{userLocation.accuracy.toFixed(1)}م</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                        <span>جاري تحديد موقعك...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Selected Location Card */}
-            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-destructive text-xl">📍</span>
-                </div>
-                <div className="text-right min-w-0 flex-1">
-                  <h4 className="text-base font-semibold text-foreground mb-3">الموقع المحدد</h4>
-                  {selectedLocation ? (
-                    <div className="space-y-3">
-                      <div className="bg-muted/50 rounded-lg px-4 py-3">
-                        <div className="text-sm text-muted-foreground mb-2">الإحداثيات</div>
-                        <div className="text-sm font-mono text-primary break-all">
-                          {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-                        </div>
-                      </div>
-                      {selectedAddress && (
-                        <div className="bg-muted/50 rounded-lg px-4 py-3">
-                          <div className="text-sm text-muted-foreground mb-2">العنوان</div>
-                          <div className="text-sm text-primary truncate">
-                            📍 {selectedAddress}
-                          </div>
-                        </div>
+              {/* Selected Location Card */}
+              <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-destructive text-lg">📍</span>
+                  </div>
+                  <div className="text-right min-w-0 flex-1">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">
+                      الموقع المحدد
+                      {selectedLocation && (
+                        <span className="text-xs font-mono text-muted-foreground ml-2">
+                          ({selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)})
+                        </span>
                       )}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-3 h-3 bg-destructive rounded-full"></div>
-                        <span>تم التحديد يدوياً</span>
+                    </h4>
+                    {selectedLocation ? (
+                      <div className="space-y-2">
+                        <div className="bg-muted/50 rounded px-3 py-2">
+                          <div className="text-xs text-muted-foreground mb-1">العنوان</div>
+                          <Input
+                            value={editableAddress}
+                            onChange={(e) => setEditableAddress(e.target.value)}
+                            placeholder="أدخل العنوان المطلوب"
+                            className="text-xs text-primary border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                            dir="rtl"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                          <span>تم التحديد يدوياً</span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      انقر على الخريطة لتحديد موقع العميل
-                    </div>
-                  )}
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        انقر على الخريطة لتحديد موقع العميل
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-
         </div>
       </div>
     </Card>
