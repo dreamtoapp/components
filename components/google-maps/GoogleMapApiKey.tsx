@@ -370,6 +370,8 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
 
 
 
+
+
   // Refresh user location function
   const refreshUserLocation = useCallback(async () => {
     if (!mapInstance) return;
@@ -511,13 +513,13 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
       mapInstance.setCenter(userLocation);
       mapInstance.setZoom(15);
 
-      // Clear selected location when recentering
+      // Reset selected location to user location when recentering
       if (selectedMarker) {
         selectedMarker.setMap(null);
       }
-      setSelectedLocation(null);
-      setSelectedMarker(null);
-      setSelectedAddress(null);
+      setSelectedLocation(userLocation);
+      setSelectedAddress(userAddress);
+      setEditableAddress(userAddress || "");
 
       // Recreate user marker if it doesn't exist or is not visible
       if (!userMarker || !userMarker.getMap()) {
@@ -560,6 +562,66 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
           }
         }, 2000);
       }
+
+      // Recreate selected location marker at user location
+      const newSelectedMarker = new window.google.maps.Marker({
+        position: userLocation,
+        map: mapInstance,
+        title: `${clientName} - الموقع المحدد`,
+        draggable: true,
+        label: {
+          text: "📍",
+          color: "hsl(var(--foreground))",
+          fontWeight: "bold",
+          fontSize: "14px"
+        },
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: "hsl(var(--destructive))", // Semantic destructive color
+          fillOpacity: 0.9,
+          strokeColor: "hsl(var(--background))",
+          strokeWeight: 2,
+          scale: 14
+        },
+        zIndex: 999
+      });
+
+      // Add drag listeners
+      newSelectedMarker.addListener('dragstart', () => {
+        newSelectedMarker.setIcon({
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: "hsl(var(--warning))", // Semantic warning color
+          fillOpacity: 0.9,
+          strokeColor: "hsl(var(--background))",
+          strokeWeight: 2,
+          scale: 16
+        });
+      });
+
+      newSelectedMarker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
+        if (dragEvent.latLng) {
+          newSelectedMarker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: "hsl(var(--destructive))", // Semantic destructive color
+            fillOpacity: 0.9,
+            strokeColor: "hsl(var(--background))",
+            strokeWeight: 2,
+            scale: 14
+          });
+
+          setSelectedLocation({
+            lat: dragEvent.latLng.lat(),
+            lng: dragEvent.latLng.lng()
+          });
+
+          getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
+            setSelectedAddress(newAddress);
+            setEditableAddress(newAddress);
+          });
+        }
+      });
+
+      setSelectedMarker(newSelectedMarker);
     }
   }, [mapInstance, userLocation, selectedMarker, userMarker]);
 
@@ -697,7 +759,15 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                                 ±{userLocation.accuracy.toFixed(1)}م
                               </span>
                             )}
-                          </div>
+                            <Button
+                              onClick={refreshUserLocation}
+                              size="icon"
+                              variant="ghost"
+                              title="تحديث الموقع"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                            >
+                              <span className="text-xs">🔄</span>
+                            </Button>   </div>
                         ) : (
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-yellow-600">
@@ -706,15 +776,7 @@ export default function GoogleMapSimple({ className = "w-full h-96", clientName 
                             </span>
                           </div>
                         )}
-                        <Button
-                          onClick={refreshUserLocation}
-                          size="icon"
-                          variant="ghost"
-                          title="تحديث الموقع"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        >
-                          <span className="text-xs">🔄</span>
-                        </Button>
+
                       </div>
                     </div>
                     {userLocation ? (
