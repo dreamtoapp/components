@@ -140,55 +140,27 @@ export default function GoogleMapSimple({
             selectedMarker.setMap(null);
           }
 
-          // Create new marker
-          const marker = new google.maps.Marker({
-            position: event.latLng,
-            map: map,
-            title: `${clientName} - الموقع المحدد`,
-            draggable: true,
-            label: {
-              text: "❤️",
-              color: "hsl(var(--foreground))",
-              fontWeight: "bold",
-              fontSize: "16px"
-            },
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--destructive))",
-              fillOpacity: 0.3,
-              strokeColor: "hsl(var(--destructive))",
-              strokeWeight: 3,
-              scale: 18
-            },
-            zIndex: 999,
-            animation: google.maps.Animation.DROP
-          });
-
-          // Add pulsing effect
-          setTimeout(() => {
-            marker.setAnimation(google.maps.Animation.BOUNCE);
-            setTimeout(() => marker.setAnimation(null), 2000);
-          }, 500);
-
           const newLocation = {
             lat: event.latLng.lat(),
             lng: event.latLng.lng()
           };
 
           setSelectedLocation(newLocation);
-          setSelectedMarker(marker);
 
-          // Get address and create markers
-          const [address, newUserMarker, newSelectedMarker] = await Promise.all([
+          // Create only ONE selected marker + fetch address
+          const [address, newSelectedMarker] = await Promise.all([
             getAddressFromCoordinates(newLocation.lat, newLocation.lng),
-            createUserMarker(newLocation, map),
             createSelectedMarker(newLocation, map, clientName)
           ]);
+
+          setSelectedMarker(newSelectedMarker);
+          setSelectedAddress(address);
+          setEditableAddress(address);
 
           return {
             location: newLocation,
             address,
-            userMarker: newUserMarker,
+            userMarker: userMarker,
             selectedMarker: newSelectedMarker
           };
 
