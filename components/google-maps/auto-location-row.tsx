@@ -32,36 +32,22 @@ const LocationProgressLoader = ({ progress }: { progress: LocationProgress }) =>
 );
 
 // Auto Location Row Component
-export const AutoLocationRow = ({ userLocation, onRecenter, locationProgress }: AutoLocationRowProps) => {
+export const AutoLocationRow = ({ userLocation, onRecenter, locationProgress, compact, inline, hideCoordinates }: AutoLocationRowProps) => {
   if (!userLocation && !locationProgress) return null;
 
   // Show loader while searching for location
   if (locationProgress?.isSearching) {
     return (
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
-        <div className="flex items-center gap-3">
+      <div className={`${inline ? 'flex items-center justify-start gap-3 border-none m-0 p-0' : `flex items-center justify-start ${compact ? 'mb-2 pb-2' : 'mb-4 pb-3'} border-b border-border/50`}`}>
+        <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
           <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-primary text-xs">🎯</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold">
-              الموقع التلقائي
-            </div>
+          <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
             <LocationProgressLoader progress={locationProgress} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={onRecenter}
-            size="icon"
-            variant="outline"
-            title="إعادة المحاولة"
-            disabled={locationProgress.isSearching}
-            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/50 transition-colors disabled:opacity-50"
-          >
-            <span className="text-xs sm:text-sm">🔄</span>
-          </Button>
-        </div>
+
       </div>
     );
   }
@@ -71,21 +57,23 @@ export const AutoLocationRow = ({ userLocation, onRecenter, locationProgress }: 
     const accuracyDisplay = getAccuracyDisplay(userLocation.accuracy || 0);
 
     return (
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
-        <div className="flex items-center gap-3">
+      <div className={`${inline ? 'flex items-center justify-start gap-3 border-none m-0 p-0' : `flex items-center justify-between ${compact ? 'mb-2 pb-2' : 'mb-4 pb-3'} border-b border-border/50`}`}>
+        <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
           <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-primary text-xs">🎯</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold">
-              الموقع التلقائي
+          {!hideCoordinates && (
+            <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+              <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-2 py-1">
+                <span className="text-xs text-muted-foreground">الموقع التلقائي من جوجل</span>
+                <div className="px-2 py-0.5 rounded bg-muted/40 text-xs font-mono text-muted-foreground border border-border/50">
+                  [{userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}]
+                </div>
+              </div>
             </div>
-            <div className="text-xs font-mono text-muted-foreground">
-              [{userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}]
-            </div>
-          </div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`}>
           {userLocation.accuracy && (
             <div className="flex items-center gap-2">
               {/* Enhanced accuracy display */}
@@ -104,13 +92,12 @@ export const AutoLocationRow = ({ userLocation, onRecenter, locationProgress }: 
             </div>
           )}
           <Button
-            onClick={onRecenter}
-            size="icon"
             variant="outline"
+            onClick={onRecenter}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/50"
             title="العودة إلى موقعك"
-            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-foreground border-border/50 hover:border-primary/50 transition-colors"
           >
-            <span className="text-xs sm:text-sm">🎯</span>
+            <span className="text-xs">🎯</span>
           </Button>
         </div>
       </div>

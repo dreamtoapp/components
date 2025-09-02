@@ -30,6 +30,7 @@ export interface LocationData {
   address: string;
   landmark: string;
   deliveryNote: string;
+  title?: string;
 }
 
 // Accuracy information type
@@ -62,6 +63,7 @@ export interface GoogleMapProps {
   className?: string;
   clientName?: string;
   apiKey?: string;
+  clientTitle?: string;
   clientAddress?: string;
   clientLandmark?: string;
   clientDeliveryNote?: string;
@@ -73,20 +75,29 @@ export interface AutoLocationRowProps {
   userLocation: Location | null;
   onRecenter: () => void;
   locationProgress?: LocationProgress | null;
+  compact?: boolean;
+  inline?: boolean;
+  hideCoordinates?: boolean;
 }
 
 export interface SelectedLocationHeaderProps {
   selectedLocation: Location | null;
+  compact?: boolean;
+  inline?: boolean;
 }
 
 export interface LocationFormProps {
   selectedLocation: Location | null;
+  userLocation: Location | null;
+  title: string;
+  setTitle: (title: string) => void;
   editableAddress: string;
   setEditableAddress: (address: string) => void;
   landmark: string;
   setLandmark: (landmark: string) => void;
   deliveryNote: string;
   setDeliveryNote: (note: string) => void;
+  onRecenter: () => void;
   onSave: () => void;
   onClear: () => void;
 }
@@ -94,6 +105,8 @@ export interface LocationFormProps {
 export interface LocationCardProps {
   userLocation: Location | null;
   selectedLocation: Location | null;
+  title: string;
+  setTitle: (title: string) => void;
   editableAddress: string;
   setEditableAddress: (address: string) => void;
   landmark: string;

@@ -8,6 +8,8 @@ import { LocationForm } from './location-form';
 export const LocationCard = ({
   userLocation,
   selectedLocation,
+  title,
+  setTitle,
   editableAddress,
   setEditableAddress,
   landmark,
@@ -24,18 +26,23 @@ export const LocationCard = ({
       userLocation={userLocation}
       onRecenter={onRecenter}
       locationProgress={locationProgress}
+      compact
     />
-    <SelectedLocationHeader selectedLocation={selectedLocation} />
+    {/* Selected location info will be displayed inline next to title field */}
 
     <div className="text-right min-w-0 flex-1">
       <LocationForm
+        userLocation={userLocation}
         selectedLocation={selectedLocation}
+        title={title}
+        setTitle={setTitle}
         editableAddress={editableAddress}
         setEditableAddress={setEditableAddress}
         landmark={landmark}
         setLandmark={setLandmark}
         deliveryNote={deliveryNote}
         setDeliveryNote={setDeliveryNote}
+        onRecenter={onRecenter}
         onSave={onSave}
         onClear={onClear}
       />

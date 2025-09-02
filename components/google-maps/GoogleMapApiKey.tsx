@@ -62,6 +62,7 @@ export default function GoogleMapSimple({
   className = "w-full h-96",
   clientName = "DreamToApp",
   apiKey,
+  clientTitle,
   clientAddress,
   clientLandmark,
   clientDeliveryNote,
@@ -88,6 +89,7 @@ export default function GoogleMapSimple({
   const [editableAddress, setEditableAddress] = useState<string>(clientAddress ?? "");
 
   // Form states
+  const [title, setTitle] = useState<string>(clientTitle ?? "");
   const [landmark, setLandmark] = useState<string>(clientLandmark ?? "");
   const [deliveryNote, setDeliveryNote] = useState<string>(clientDeliveryNote ?? "");
 
@@ -392,6 +394,7 @@ export default function GoogleMapSimple({
 
     const locationData: LocationData = {
       coordinates: selectedLocation,
+      title,
       address: editableAddress,
       landmark: landmark,
       deliveryNote: deliveryNote
@@ -454,6 +457,8 @@ export default function GoogleMapSimple({
                 <LocationCard
                   userLocation={userLocation}
                   selectedLocation={selectedLocation}
+                  title={title}
+                  setTitle={setTitle}
                   editableAddress={editableAddress}
                   setEditableAddress={setEditableAddress}
                   landmark={landmark}
