@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 // Hardcoded test config (same as sendOtp.ts)
 const TEST_CONFIG = {
@@ -48,21 +48,25 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ ERROR: Simple text message failed', error);
+    console.error('❌ ERROR: Failed to send WhatsApp message', error);
 
-    // Log detailed error information
-    if (error.response) {
-      console.error('Error Response:', error.response.data);
-      console.error('Error Status:', error.response.status);
+    const axiosError = error as AxiosError;
+
+    if (axiosError.response) {
+      console.error('Error Response:', axiosError.response.data);
+      console.error('Error Status:', axiosError.response.status);
+
+      return NextResponse.json({
+        success: false,
+        error: 'WhatsApp API Error',
+        details: axiosError.response?.data || 'No response details'
+      }, { status: axiosError.response.status });
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: error.response?.data || 'No response details'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Network Error',
+      details: axiosError.message || 'Unknown error'
+    }, { status: 500 });
   }
 }

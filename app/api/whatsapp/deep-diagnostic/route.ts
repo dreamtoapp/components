@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { AxiosError } from 'axios';
 
 // Hardcoded test config (same as sendOtp.ts)
 const TEST_CONFIG = {
@@ -9,11 +10,48 @@ const TEST_CONFIG = {
   API_VERSION: "v23.0"
 };
 
+interface DiagnosticCheck {
+  success: boolean;
+  data?: any;
+  error?: any;
+  verified?: boolean;
+  code_verification_status?: string;
+  quality_rating?: string;
+  status?: string | number;
+  name?: string;
+  currency?: string;
+  timezone_id?: string;
+  statusCode?: number;
+  statusText?: string;
+  id?: string;
+  templates?: any[];
+  total?: number;
+  messageId?: string;
+  contacts?: any;
+}
+
+interface DiagnosticResults {
+  timestamp: string;
+  config: {
+    phoneNumberId: string;
+    businessAccountId: string;
+    apiVersion: string;
+    tokenLength: number;
+  };
+  checks: {
+    phoneNumber?: DiagnosticCheck;
+    businessAccount?: DiagnosticCheck;
+    testMessage?: DiagnosticCheck;
+    appPermissions?: DiagnosticCheck;
+    templates?: DiagnosticCheck;
+  };
+}
+
 export async function GET() {
   try {
     console.log('🔍 DEBUG: Running deep diagnostic...');
 
-    const diagnosticResults = {
+    const diagnosticResults: DiagnosticResults = {
       timestamp: new Date().toISOString(),
       config: {
         phoneNumberId: TEST_CONFIG.PHONE_NUMBER_ID,
@@ -46,11 +84,12 @@ export async function GET() {
 
       console.log('✅ Phone Number Check:', phoneResponse.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       diagnosticResults.checks.phoneNumber = {
         success: false,
-        error: error.response?.data || error.message
+        error: axiosError.response?.data || axiosError.message
       };
-      console.error('❌ Phone Number Check Failed:', error.response?.data);
+      console.error('❌ Phone Number Check Failed:', axiosError.response?.data);
     }
 
     // Check 2: Business Account Status
@@ -74,11 +113,12 @@ export async function GET() {
 
       console.log('✅ Business Account Check:', businessResponse.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       diagnosticResults.checks.businessAccount = {
         success: false,
-        error: error.response?.data || error.message
+        error: axiosError.response?.data || axiosError.message
       };
-      console.error('❌ Business Account Check Failed:', error.response?.data);
+      console.error('❌ Business Account Check Failed:', axiosError.response?.data);
     }
 
     // Check 3: Test Message Send (with detailed logging)
@@ -110,13 +150,14 @@ export async function GET() {
 
       console.log('✅ Test Message Check:', testMessageResponse.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       diagnosticResults.checks.testMessage = {
         success: false,
-        error: error.response?.data || error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText
+        error: axiosError.response?.data || axiosError.message,
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText
       };
-      console.error('❌ Test Message Check Failed:', error.response?.data);
+      console.error('❌ Test Message Check Failed:', axiosError.response?.data);
     }
 
     // Check 4: App Permissions
@@ -139,11 +180,12 @@ export async function GET() {
 
       console.log('✅ App Permissions Check:', appResponse.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       diagnosticResults.checks.appPermissions = {
         success: false,
-        error: error.response?.data || error.message
+        error: axiosError.response?.data || axiosError.message
       };
-      console.error('❌ App Permissions Check Failed:', error.response?.data);
+      console.error('❌ App Permissions Check Failed:', axiosError.response?.data);
     }
 
     // Check 5: Template Status
@@ -166,12 +208,13 @@ export async function GET() {
 
       console.log('✅ Template Status Check:', templateResponse.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       diagnosticResults.checks.templates = {
         success: false,
-        error: error.response?.data || error.message,
-        status: error.response?.status
+        error: axiosError.response?.data || axiosError.message,
+        status: axiosError.response?.status
       };
-      console.error('❌ Template Status Check Failed:', error.response?.data);
+      console.error('❌ Template Status Check Failed:', axiosError.response?.data);
     }
 
     console.log('🔍 COMPLETE DIAGNOSTIC RESULTS:', JSON.stringify(diagnosticResults, null, 2));
@@ -184,11 +227,12 @@ export async function GET() {
   } catch (error) {
     console.error('❌ ERROR: Deep diagnostic failed', error);
 
+    const axiosError = error as AxiosError;
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        details: error.response?.data || 'No response details'
+        details: axiosError.response?.data || 'No response details'
       },
       { status: 500 }
     );

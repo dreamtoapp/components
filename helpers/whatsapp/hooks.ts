@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { WhatsAppApiService } from '../../../../actions/whatsapp-api';
+import { WhatsAppApiService } from '../../actions/whatsapp-api';
 import { ChatMessage } from './types';
 import { logError } from './utils';
 
@@ -50,8 +50,9 @@ export const useWhatsAppOTP = () => {
       setIsOtpSent(true);
       return { success: true, otp: generatedOtp, response };
     } catch (error) {
-      logError('Failed to send OTP', error);
-      throw error;
+      console.error('❌ Failed to send OTP:', error);
+      logError(error as any, 'Failed to send OTP');
+      return { success: false, error: 'Failed to send OTP' };
     }
   }, []);
 
@@ -61,8 +62,9 @@ export const useWhatsAppOTP = () => {
       setIsOtpVerified(true);
       return { success: true };
     } catch (error) {
-      logError('Failed to verify OTP', error);
-      throw error;
+      console.error('❌ Failed to verify OTP:', error);
+      logError(error as any, 'Failed to verify OTP');
+      return { success: false, error: 'Failed to verify OTP' };
     }
   }, []);
 
@@ -88,8 +90,9 @@ export const useWhatsAppMessaging = () => {
     try {
       return await WhatsAppApiService.sendTextMessage(phoneNumber, message);
     } catch (error) {
-      logError('Failed to send message', error);
-      throw error;
+      console.error('❌ Failed to send message:', error);
+      logError(error as any, 'Failed to send message');
+      return { success: false, error: 'Failed to send message' };
     }
   }, []);
 
@@ -97,8 +100,9 @@ export const useWhatsAppMessaging = () => {
     try {
       return await WhatsAppApiService.sendTestMessage(phoneNumber);
     } catch (error) {
-      logError('Failed to send test message', error);
-      throw error;
+      console.error('❌ Failed to send test message:', error);
+      logError(error as any, 'Failed to send test message');
+      return { success: false, error: 'Failed to send test message' };
     }
   }, []);
 
@@ -106,8 +110,9 @@ export const useWhatsAppMessaging = () => {
     try {
       return await WhatsAppApiService.sendSimpleTextMessage(phoneNumber);
     } catch (error) {
-      logError('Failed to send simple text message', error);
-      throw error;
+      console.error('❌ Failed to send simple text message:', error);
+      logError(error as any, 'Failed to send simple text message');
+      return { success: false, error: 'Failed to send simple text message' };
     }
   }, []);
 
@@ -115,8 +120,9 @@ export const useWhatsAppMessaging = () => {
     try {
       return await WhatsAppApiService.sendHelloWorldTemplate(phoneNumber);
     } catch (error) {
-      logError('Failed to send hello world template', error);
-      throw error;
+      console.error('❌ Failed to send hello world template:', error);
+      logError(error as any, 'Failed to send hello world template');
+      return { success: false, error: 'Failed to send hello world template' };
     }
   }, []);
 
@@ -124,8 +130,9 @@ export const useWhatsAppMessaging = () => {
     try {
       return await WhatsAppApiService.sendAutomatedReply(phoneNumber);
     } catch (error) {
-      logError('Failed to send automated reply', error);
-      throw error;
+      console.error('❌ Failed to send automated reply:', error);
+      logError(error as any, 'Failed to send automated reply');
+      return { success: false, error: 'Failed to send automated reply' };
     }
   }, []);
 

@@ -24,7 +24,6 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-google-maps/api": "^2.20.7",
-    "@types/google.maps": "^3.58.1",
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -41,6 +40,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

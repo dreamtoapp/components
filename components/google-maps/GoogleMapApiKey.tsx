@@ -1,901 +1,501 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { GoogleMapProps, Location, GoogleMapsMap, GoogleMapsMarker, GoogleMapsMapMouseEvent, LocationData, LocationProgress } from './types';
+import { useGoogleMaps, useGeocoding, useMarkerCreation, useGeolocation } from './hooks';
+import { MapLoadingSkeleton, LocationCardSkeleton } from './skeletons';
+import { LocationCard } from './location-card';
 
-interface GoogleMapProps {
-  className?: string;
-  clientName?: string;
-}
+// Map Overlay Loader Component
+const MapOverlayLoader = ({ progress }: { progress: LocationProgress | null }) => {
+  if (!progress?.isSearching) return null;
 
-declare global {
-  interface Window {
-    google?: typeof google;
-    initMap?: () => void;
-  }
-}
+  return (
+    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+      <div className="bg-card rounded-xl p-6 border border-border shadow-lg max-w-sm mx-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          {/* Spinning loader */}
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-lg">🎯</span>
+            </div>
+          </div>
 
-export default function GoogleMapSimple({ className = "w-full h-96", clientName = "DreamToApp" }: GoogleMapProps) {
+          {/* Progress text */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-foreground">
+              جاري تحديد موقعك
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {progress.message}
+            </p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-muted rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${(progress.attempts / 3) * 100}%` }}
+            ></div>
+          </div>
+
+          {/* Accuracy info */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>المحاولة {progress.attempts}/3</span>
+            <span>•</span>
+            <span>الدقة: ±{progress.accuracy.toFixed(1)}م</span>
+          </div>
+
+          {/* Tips */}
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+            <p>💡 تأكد من تفعيل GPS للحصول على أفضل دقة</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function GoogleMapSimple({
+  className = "w-full h-96",
+  clientName = "DreamToApp",
+  apiKey,
+  clientAddress,
+  clientLandmark,
+  clientDeliveryNote,
+  clientLocation,
+  onSave
+}: GoogleMapProps) {
+  // Refs
   const mapRef = useRef<HTMLDivElement>(null);
+
+  // State management
   const [error, setError] = useState<string | null>(null);
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number; accuracy?: number } | null>(null);
-  const [userMarker, setUserMarker] = useState<google.maps.Marker | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(null);
-  const [selectedMarker, setSelectedMarker] = useState<google.maps.Marker | null>(null);
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [mapInstance, setMapInstance] = useState<GoogleMapsMap | null>(null);
+
+  // Location states
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
+  const [userMarker, setUserMarker] = useState<GoogleMapsMarker | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<GoogleMapsMarker | null>(null);
+
+  // Address states
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
-  const [editableAddress, setEditableAddress] = useState<string>("");
+  const [editableAddress, setEditableAddress] = useState<string>(clientAddress ?? "");
 
+  // Form states
+  const [landmark, setLandmark] = useState<string>(clientLandmark ?? "");
+  const [deliveryNote, setDeliveryNote] = useState<string>(clientDeliveryNote ?? "");
+
+  // Location progress state
+  const [locationProgress, setLocationProgress] = useState<LocationProgress | null>(null);
+
+  // Hooks
+  const { getGoogleMaps } = useGoogleMaps();
+  const { getAddressFromCoordinates } = useGeocoding();
+  const { createUserMarker, createSelectedMarker } = useMarkerCreation();
+  const { getUserLocation } = useGeolocation();
+
+  // Map initialization
   const initializeMap = useCallback(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !mapRef.current) {
       return;
     }
 
-    if (!mapRef.current) {
+    const google = getGoogleMaps();
+    if (!google?.maps?.Map) {
+      setError("Google Maps API غير متوفر");
+      setIsMapLoading(false);
       return;
     }
 
-    if (!window.google || !window.google.maps || !window.google.maps.Map) {
-      return;
-    }
+    try {
+      const map = new google.maps.Map(mapRef.current, {
+        center: { lat: 20, lng: 0 },
+        zoom: 2,
+        zoomControl: false,
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+          position: google.maps.ControlPosition.TOP_LEFT
+        },
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: 'cooperative'
+      });
 
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: { lat: 20, lng: 0 },
-      zoom: 2,
-      zoomControl: false, // Disabled native zoom controls
-      mapTypeControl: true,
-      mapTypeControlOptions: {
-        position: window.google.maps.ControlPosition.TOP_LEFT
-      },
-      streetViewControl: false, // Disabled street view control
-      fullscreenControl: false // Disabled native fullscreen control
-    });
+      setMapInstance(map);
+      setIsMapLoading(false);
 
-    setMapInstance(map);
+      // Add click listener
+      map.addListener('click', async (event: GoogleMapsMapMouseEvent) => {
+        if (!event.latLng) return;
 
-    // Add click listener for simple markers
-    map.addListener('click', async (event: google.maps.MapMouseEvent) => {
-      if (event.latLng) {
-
-        // Remove previous selected marker if it exists
-        if (selectedMarker) {
-          selectedMarker.setMap(null);
-        }
-
-        // Create enterprise-grade draggable marker
-        const marker = new window.google.maps.Marker({
-          position: event.latLng,
-          map: map,
-          title: `${clientName} - الموقع المحدد`,
-          draggable: true,
-          label: {
-            text: "📍",
-            color: "hsl(var(--foreground))",
-            fontWeight: "bold",
-            fontSize: "14px"
-          },
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: "hsl(var(--destructive))", // Semantic destructive color
-            fillOpacity: 0.9,
-            strokeColor: "hsl(var(--background))",
-            strokeWeight: 2,
-            scale: 14
-          },
-          zIndex: 999
-        });
-
-        // Store initial selected location and marker
-        setSelectedLocation({ lat: event.latLng.lat(), lng: event.latLng.lng() });
-        setSelectedMarker(marker);
-
-        // Get address for selected location
-        const address = await getAddressFromCoordinates(event.latLng.lat(), event.latLng.lng());
-        setSelectedAddress(address);
-        setEditableAddress(address);
-
-        // Add drag start listener for visual feedback
-        marker.addListener('dragstart', () => {
-          marker.setIcon({
-            path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: "hsl(var(--warning))", // Semantic warning color
-            fillOpacity: 0.9,
-            strokeColor: "hsl(var(--background))",
-            strokeWeight: 2,
-            scale: 16
-          });
-        });
-
-        // Add drag end listener with enhanced feedback
-        marker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
-          if (dragEvent.latLng) {
-            // Reset to normal state
-            marker.setIcon({
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--destructive))", // Semantic destructive color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 2,
-              scale: 14
-            });
-
-            // Update selected location in real-time
-            setSelectedLocation({
-              lat: dragEvent.latLng.lat(),
-              lng: dragEvent.latLng.lng()
-            });
+        try {
+          // Clean up previous marker
+          if (selectedMarker) {
+            selectedMarker.setMap(null);
           }
-        });
 
-      }
-    });
-
-    // Auto-detect user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const currentLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-          };
-
-          setUserLocation(currentLocation);
-          map.setCenter(currentLocation);
-          map.setZoom(15);
-
-          // Get address for user location
-          const address = await getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
-          setUserAddress(address);
-
-          // Add user location marker - enterprise-grade design
-          const newUserMarker = new window.google.maps.Marker({
-            position: currentLocation,
+          // Create new marker
+          const marker = new google.maps.Marker({
+            position: event.latLng,
             map: map,
-            title: "موقعك الحالي",
+            title: `${clientName} - الموقع المحدد`,
+            draggable: true,
             label: {
-              text: "📍",
+              text: "❤️",
               color: "hsl(var(--foreground))",
               fontWeight: "bold",
               fontSize: "16px"
             },
             icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--primary))", // Semantic primary color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: "hsl(var(--destructive))",
+              fillOpacity: 0.3,
+              strokeColor: "hsl(var(--destructive))",
               strokeWeight: 3,
-              scale: 16
+              scale: 18
             },
-            zIndex: 1000,
-            animation: window.google.maps.Animation.BOUNCE
+            zIndex: 999,
+            animation: google.maps.Animation.DROP
           });
 
-          // Add pulsing effect for user location
+          // Add pulsing effect
           setTimeout(() => {
-            newUserMarker.setAnimation(null);
-          }, 2000);
+            marker.setAnimation(google.maps.Animation.BOUNCE);
+            setTimeout(() => marker.setAnimation(null), 2000);
+          }, 500);
 
-          setUserMarker(newUserMarker);
+          const newLocation = {
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng()
+          };
 
-          // Set default selected location to be the same as user location
-          setSelectedLocation(currentLocation);
-          setSelectedAddress(address);
-          setEditableAddress(address);
+          setSelectedLocation(newLocation);
+          setSelectedMarker(marker);
 
-          // Create selected location marker at user location
-          const selectedMarker = new window.google.maps.Marker({
-            position: currentLocation,
-            map: map,
-            title: `${clientName} - الموقع المحدد`,
-            draggable: true,
-            label: {
-              text: "📍",
-              color: "hsl(var(--foreground))",
-              fontWeight: "bold",
-              fontSize: "14px"
-            },
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--destructive))", // Semantic destructive color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 2,
-              scale: 14
-            },
-            zIndex: 999
-          });
+          // Get address and create markers
+          const [address, newUserMarker, newSelectedMarker] = await Promise.all([
+            getAddressFromCoordinates(newLocation.lat, newLocation.lng),
+            createUserMarker(newLocation, map),
+            createSelectedMarker(newLocation, map, clientName)
+          ]);
 
-          // Add drag start listener for visual feedback
-          selectedMarker.addListener('dragstart', () => {
-            selectedMarker.setIcon({
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--warning))", // Semantic warning color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 2,
-              scale: 16
-            });
-          });
+          return {
+            location: newLocation,
+            address,
+            userMarker: newUserMarker,
+            selectedMarker: newSelectedMarker
+          };
 
-          // Add drag end listener with enhanced feedback
-          selectedMarker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
-            if (dragEvent.latLng) {
-              // Reset to normal state
-              selectedMarker.setIcon({
-                path: window.google.maps.SymbolPath.CIRCLE,
-                fillColor: "hsl(var(--destructive))", // Semantic destructive color
-                fillOpacity: 0.9,
-                strokeColor: "hsl(var(--background))",
-                strokeWeight: 2,
-                scale: 14
-              });
-
-              // Update selected location in real-time
-              setSelectedLocation({
-                lat: dragEvent.latLng.lat(),
-                lng: dragEvent.latLng.lng()
-              });
-
-              // Get new address for dragged location
-              getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
-                setSelectedAddress(newAddress);
-                setEditableAddress(newAddress);
-              });
-            }
-          });
-
-          setSelectedMarker(selectedMarker);
-        },
-        (error) => {
-          // Geolocation error handled silently
+        } catch (error) {
+          console.error('Error handling map click:', error);
+          setError("خطأ في تحديد الموقع");
         }
-      );
-    }
-  }, [clientName]);
-
-  // Function to get address from coordinates with Arabic support
-  const getAddressFromCoordinates = useCallback(async (lat: number, lng: number): Promise<string> => {
-    try {
-      const geocoder = new window.google.maps.Geocoder();
-
-      // Try to get Arabic address first
-      const arabicResult = await geocoder.geocode({
-        location: { lat, lng },
-        language: 'ar' // Arabic language
       });
 
-      // Also get English address as fallback
-      const englishResult = await geocoder.geocode({
-        location: { lat, lng },
-        language: 'en' // English language
-      });
-
-      // Use Arabic result if available, otherwise fallback to English
-      const result = arabicResult.results[0] || englishResult.results[0];
-
-      if (result) {
-        const addressComponents = result.address_components;
-        const streetNumber = addressComponents.find(comp => comp.types.includes('street_number'))?.long_name || '';
-        const route = addressComponents.find(comp => comp.types.includes('route'))?.long_name || '';
-        const neighborhood = addressComponents.find(comp => comp.types.includes('neighborhood'))?.long_name || '';
-        const sublocality = addressComponents.find(comp => comp.types.includes('sublocality_level_1'))?.long_name || '';
-        const locality = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || '';
-
-        // Build readable address
-        let address = '';
-        if (streetNumber && route) {
-          address += `${streetNumber} ${route}`;
-        } else if (route) {
-          address += route;
-        }
-
-        if (neighborhood || sublocality) {
-          address += address ? `, ${neighborhood || sublocality}` : (neighborhood || sublocality);
-        }
-
-        if (locality) {
-          address += address ? `, ${locality}` : locality;
-        }
-
-        return address || 'العنوان غير متوفر';
-      }
-      return 'العنوان غير متوفر';
     } catch (error) {
-      return 'العنوان غير متوفر';
+      console.error('Error initializing map:', error);
+      setError("خطأ في تحميل الخريطة");
+      setIsMapLoading(false);
     }
-  }, []);
+  }, [getGoogleMaps, clientName, selectedMarker, getAddressFromCoordinates]);
 
+  // Load Google Maps API
   const loadGoogleMapsAPI = useCallback(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    if (window.google && window.google.maps && window.google.maps.Map) {
+    const google = getGoogleMaps();
+    if (google?.maps?.Map) {
       initializeMap();
       return;
     }
 
+    // Check if script is already loading
     if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const checkInterval = setInterval(() => {
+        const google = getGoogleMaps();
+        if (google?.maps?.Map) {
+          clearInterval(checkInterval);
+          initializeMap();
+        }
+      }, 100);
+
+      setTimeout(() => clearInterval(checkInterval), 10000);
       return;
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAP_API_KEY;
-    if (!apiKey) {
+    const resolvedApiKey = apiKey ?? process.env.NEXT_PUBLIC_GOOGLE_MAP_API_KEY;
+    if (!resolvedApiKey) {
       setError("مفتاح Google Maps مفقود");
+      setIsMapLoading(false);
       return;
     }
 
+    // Set up callback
     window.initMap = () => {
-      setTimeout(() => initializeMap(), 100);
+      requestAnimationFrame(() => {
+        initializeMap();
+      });
     };
 
+    // Create and load script
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${resolvedApiKey}&callback=initMap&libraries=geometry`;
     script.async = true;
     script.defer = true;
 
     script.onerror = () => {
       setError("فشل في تحميل Google Maps API");
+      setIsMapLoading(false);
     };
 
     document.head.appendChild(script);
-  }, [initializeMap]);
+  }, [initializeMap, getGoogleMaps, apiKey]);
 
-
-
+  // Map ref callback
   const mapRefCallback = useCallback((node: HTMLDivElement | null) => {
-    mapRef.current = node;
-    if (node) {
-      setTimeout(() => loadGoogleMapsAPI(), 100);
+    if (mapRef.current !== node) {
+      mapRef.current = node;
+      if (node && !mapInstance) {
+        requestAnimationFrame(() => {
+          loadGoogleMapsAPI();
+        });
+      }
     }
-  }, [loadGoogleMapsAPI]);
+  }, [loadGoogleMapsAPI, mapInstance]);
 
-  // Cleanup markers on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (userMarker) {
-        userMarker.setMap(null);
-      }
-      if (selectedMarker) {
-        selectedMarker.setMap(null);
+      // Clean up markers
+      [userMarker, selectedMarker].forEach(marker => {
+        if (marker) {
+          const dragStartListener = marker.get('dragStartListener');
+          const dragEndListener = marker.get('dragEndListener');
+
+          if (dragStartListener) {
+            const google = getGoogleMaps();
+            if (google?.maps?.event) {
+              google.maps.event.removeListener(dragStartListener);
+            }
+          }
+          if (dragEndListener) {
+            const google = getGoogleMaps();
+            if (google?.maps?.event) {
+              google.maps.event.removeListener(dragEndListener);
+            }
+          }
+
+          marker.setMap(null);
+        }
+      });
+
+      // Clean up global callback
+      if (window.initMap) {
+        delete window.initMap;
       }
     };
-  }, [userMarker, selectedMarker]);
+  }, [userMarker, selectedMarker, getGoogleMaps]);
 
+  // Initialize user location when map is ready
+  useEffect(() => {
+    if (mapInstance && !userLocation) {
+      if (clientLocation) {
+        // If a default location is provided, set it optimistically
+        setSelectedLocation(clientLocation);
+      }
+      // Start location progress
+      setLocationProgress({
+        accuracy: 0,
+        attempts: 0,
+        isSearching: true,
+        message: 'جاري البحث عن موقعك...'
+      });
 
+      getUserLocation(mapInstance, clientName, (accuracy, attempts) => {
+        // Update progress
+        setLocationProgress({
+          accuracy,
+          attempts,
+          isSearching: true,
+          message: `المحاولة ${attempts}/3 - الدقة: ±${accuracy.toFixed(1)}م`
+        });
+      }).then((result) => {
+        if (result) {
+          setUserLocation(result.location);
+          setUserAddress(result.address);
+          setUserMarker(result.userMarker);
+          setSelectedLocation(result.location);
+          setSelectedAddress(result.address);
+          setEditableAddress(result.address);
+          setSelectedMarker(result.selectedMarker);
 
+          // Clear progress
+          setLocationProgress(null);
 
+          // Log accuracy information
+          if (result.accuracyInfo) {
+            console.log(`Location accuracy: ${result.accuracyInfo.text} (${result.location.accuracy?.toFixed(1)}m)`);
+          }
+        } else {
+          // Clear progress on error
+          setLocationProgress(null);
+        }
+      }).catch((error) => {
+        console.error('Location detection failed:', error);
+        setLocationProgress(null);
+        setError("فشل في تحديد الموقع");
+      });
+    }
+  }, [mapInstance, userLocation, getUserLocation, clientName]);
 
-  // Refresh user location function
-  const refreshUserLocation = useCallback(async () => {
+  // Recenter to user location with enhanced accuracy
+  const recenterToUserLocation = useCallback(async () => {
     if (!mapInstance) return;
 
-    // Show loading state
-    setUserLocation(null);
-    setUserAddress(null);
-    if (userMarker) {
-      userMarker.setMap(null);
-    }
+    try {
+      // Start location progress
+      setLocationProgress({
+        accuracy: 0,
+        attempts: 0,
+        isSearching: true,
+        message: 'جاري إعادة تحديد موقعك...'
+      });
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const currentLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-          };
-
-          setUserLocation(currentLocation);
-          mapInstance.setCenter(currentLocation);
-          mapInstance.setZoom(15);
-
-          // Get address for user location
-          const address = await getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
-          setUserAddress(address);
-
-          // Add user location marker - enterprise-grade design
-          const newUserMarker = new window.google.maps.Marker({
-            position: currentLocation,
-            map: mapInstance,
-            title: "موقعك الحالي",
-            label: {
-              text: "📍",
-              color: "hsl(var(--foreground))",
-              fontWeight: "bold",
-              fontSize: "16px"
-            },
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--primary))", // Semantic primary color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 3,
-              scale: 16
-            },
-            zIndex: 1000,
-            animation: window.google.maps.Animation.BOUNCE
-          });
-
-          // Add pulsing effect for user location
-          setTimeout(() => {
-            newUserMarker.setAnimation(null);
-          }, 2000);
-
-          setUserMarker(newUserMarker);
-
-          // Update selected location to match new user location
-          setSelectedLocation(currentLocation);
-          setSelectedAddress(address);
-          setEditableAddress(address);
-
-          // Update selected marker
-          if (selectedMarker) {
-            selectedMarker.setMap(null);
-          }
-          const newSelectedMarker = new window.google.maps.Marker({
-            position: currentLocation,
-            map: mapInstance,
-            title: `${clientName} - الموقع المحدد`,
-            draggable: true,
-            label: {
-              text: "📍",
-              color: "hsl(var(--foreground))",
-              fontWeight: "bold",
-              fontSize: "14px"
-            },
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--destructive))", // Semantic destructive color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 2,
-              scale: 14
-            },
-            zIndex: 999
-          });
-
-          // Add drag listeners
-          newSelectedMarker.addListener('dragstart', () => {
-            newSelectedMarker.setIcon({
-              path: window.google.maps.SymbolPath.CIRCLE,
-              fillColor: "hsl(var(--warning))", // Semantic warning color
-              fillOpacity: 0.9,
-              strokeColor: "hsl(var(--background))",
-              strokeWeight: 2,
-              scale: 16
-            });
-          });
-
-          newSelectedMarker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
-            if (dragEvent.latLng) {
-              newSelectedMarker.setIcon({
-                path: window.google.maps.SymbolPath.CIRCLE,
-                fillColor: "hsl(var(--destructive))", // Semantic destructive color
-                fillOpacity: 0.9,
-                strokeColor: "hsl(var(--background))",
-                strokeWeight: 2,
-                scale: 14
-              });
-
-              setSelectedLocation({
-                lat: dragEvent.latLng.lat(),
-                lng: dragEvent.latLng.lng()
-              });
-
-              getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
-                setSelectedAddress(newAddress);
-                setEditableAddress(newAddress);
-              });
-            }
-          });
-
-          setSelectedMarker(newSelectedMarker);
-        },
-        (error) => {
-          // Handle geolocation error
-          console.error('Geolocation error:', error);
-        }
-      );
-    }
-  }, [mapInstance, userMarker, selectedMarker, getAddressFromCoordinates, clientName]);
-
-  // Recenter function
-  const recenterToUserLocation = useCallback(() => {
-    if (mapInstance && userLocation) {
-      // First, ensure user location is visible and centered
-      mapInstance.setCenter(userLocation);
-      mapInstance.setZoom(15);
-
-      // Reset selected location to user location when recentering
-      if (selectedMarker) {
-        selectedMarker.setMap(null);
-      }
-      setSelectedLocation(userLocation);
-      setSelectedAddress(userAddress);
-      setEditableAddress(userAddress || "");
-
-      // Recreate user marker if it doesn't exist or is not visible
-      if (!userMarker || !userMarker.getMap()) {
-        const newUserMarker = new window.google.maps.Marker({
-          position: userLocation,
-          map: mapInstance,
-          title: "موقعك الحالي",
-          label: {
-            text: "📍",
-            color: "hsl(var(--foreground))",
-            fontWeight: "bold",
-            fontSize: "16px"
-          },
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: "hsl(var(--primary))", // Semantic primary color
-            fillOpacity: 0.9,
-            strokeColor: "hsl(var(--background))",
-            strokeWeight: 3,
-            scale: 16
-          },
-          zIndex: 1000,
-          animation: window.google.maps.Animation.BOUNCE
+      // Get fresh location with enhanced accuracy
+      const result = await getUserLocation(mapInstance, clientName, (accuracy, attempts) => {
+        // Update progress
+        setLocationProgress({
+          accuracy,
+          attempts,
+          isSearching: true,
+          message: `المحاولة ${attempts}/3 - الدقة: ±${accuracy.toFixed(1)}م`
         });
+      });
 
-        // Stop animation after 2 seconds
-        setTimeout(() => {
-          if (newUserMarker) {
-            newUserMarker.setAnimation(null);
-          }
-        }, 2000);
+      if (result) {
+        // Update user location
+        setUserLocation(result.location);
+        setUserAddress(result.address);
+        setUserMarker(result.userMarker);
 
-        setUserMarker(newUserMarker);
+        // Update selected location
+        if (selectedMarker) {
+          selectedMarker.setMap(null);
+        }
+
+        setSelectedLocation(result.location);
+        setSelectedAddress(result.address);
+        setEditableAddress(result.address);
+        setSelectedMarker(result.selectedMarker);
+
+        // Clear progress
+        setLocationProgress(null);
+
+        // Log accuracy information
+        if (result.accuracyInfo) {
+          console.log(`Recenter accuracy: ${result.accuracyInfo.text} (${result.location.accuracy?.toFixed(1)}m)`);
+        }
       } else {
-        // Ensure existing marker is visible and animated
-        userMarker.setAnimation(window.google.maps.Animation.BOUNCE);
-        setTimeout(() => {
-          if (userMarker) {
-            userMarker.setAnimation(null);
-          }
-        }, 2000);
+        // Clear progress on error
+        setLocationProgress(null);
       }
-
-      // Recreate selected location marker at user location
-      const newSelectedMarker = new window.google.maps.Marker({
-        position: userLocation,
-        map: mapInstance,
-        title: `${clientName} - الموقع المحدد`,
-        draggable: true,
-        label: {
-          text: "📍",
-          color: "hsl(var(--foreground))",
-          fontWeight: "bold",
-          fontSize: "14px"
-        },
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          fillColor: "hsl(var(--destructive))", // Semantic destructive color
-          fillOpacity: 0.9,
-          strokeColor: "hsl(var(--background))",
-          strokeWeight: 2,
-          scale: 14
-        },
-        zIndex: 999
-      });
-
-      // Add drag listeners
-      newSelectedMarker.addListener('dragstart', () => {
-        newSelectedMarker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          fillColor: "hsl(var(--warning))", // Semantic warning color
-          fillOpacity: 0.9,
-          strokeColor: "hsl(var(--background))",
-          strokeWeight: 2,
-          scale: 16
-        });
-      });
-
-      newSelectedMarker.addListener('dragend', (dragEvent: google.maps.MapMouseEvent) => {
-        if (dragEvent.latLng) {
-          newSelectedMarker.setIcon({
-            path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: "hsl(var(--destructive))", // Semantic destructive color
-            fillOpacity: 0.9,
-            strokeColor: "hsl(var(--background))",
-            strokeWeight: 2,
-            scale: 14
-          });
-
-          setSelectedLocation({
-            lat: dragEvent.latLng.lat(),
-            lng: dragEvent.latLng.lng()
-          });
-
-          getAddressFromCoordinates(dragEvent.latLng.lat(), dragEvent.latLng.lng()).then(newAddress => {
-            setSelectedAddress(newAddress);
-            setEditableAddress(newAddress);
-          });
-        }
-      });
-
-      setSelectedMarker(newSelectedMarker);
+    } catch (error) {
+      console.error('Error recentering:', error);
+      setLocationProgress(null);
+      setError("خطأ في العودة إلى الموقع");
     }
-  }, [mapInstance, userLocation, selectedMarker, userMarker]);
+  }, [mapInstance, selectedMarker, getUserLocation, clientName]);
 
+  // Handle location data save
+  const handleSaveLocation = useCallback(() => {
+    if (!selectedLocation) return;
+
+    const locationData: LocationData = {
+      coordinates: selectedLocation,
+      address: editableAddress,
+      landmark: landmark,
+      deliveryNote: deliveryNote
+    };
+
+    console.log('Saving location:', locationData);
+    if (onSave) {
+      onSave(locationData);
+    }
+  }, [selectedLocation, editableAddress, landmark, deliveryNote, onSave]);
+
+  // Handle form clear
+  const handleClearFields = useCallback(() => {
+    setLandmark("");
+    setDeliveryNote("");
+  }, []);
+
+  // Error state
   if (error) {
     return (
       <Card className={`${className} max-w-4xl mx-auto`}>
-        <CardContent className="flex items-center justify-center p-8">
+        <div className="flex items-center justify-center p-8">
           <p className="text-destructive font-medium">Error: {error}</p>
-        </CardContent>
+        </div>
       </Card>
     );
   }
 
   return (
     <Card className={`${className} arabic-text`}>
-      {/* Header Section */}
-      <CardHeader className="pb-6">
-        <div className="space-y-4">
-          {/* Main Header Row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Title Section */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl text-primary">📍</span>
-              </div>
-              <div className="text-right">
-                <CardTitle className="text-2xl font-bold text-foreground">تحديد موقعك بعناية يسهل سرعة وصول منتجاتك</CardTitle>
-                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                  <span className="text-sm">💡</span>
-                  <span>انقر على الخريطة لتحديد الموقع</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Map Controls */}
-            <div className="flex items-center gap-2">
-              {/* Fullscreen Toggle */}
-              <Button
-                onClick={() => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                  } else {
-                    document.documentElement.requestFullscreen();
-                  }
-                }}
-                size="icon"
-                variant="outline"
-                title="ملء الشاشة"
-                className="h-10 w-10"
-              >
-                <span className="text-base">⛶</span>
-              </Button>
-
-              {/* Zoom Controls */}
-              <div className="flex gap-1">
-                <Button
-                  onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) + 1)}
-                  size="icon"
-                  variant="outline"
-                  title="تكبير"
-                  className="h-10 w-10"
-                >
-                  <span className="text-base font-bold">+</span>
-                </Button>
-                <Button
-                  onClick={() => mapInstance?.setZoom((mapInstance.getZoom() || 15) - 1)}
-                  size="icon"
-                  variant="outline"
-                  title="تصغير"
-                  className="h-10 w-10"
-                >
-                  <span className="text-base font-bold">−</span>
-                </Button>
-              </div>
-
-              {/* Recenter Button */}
-              {userLocation && (
-                <Button
-                  onClick={recenterToUserLocation}
-                  size="icon"
-                  variant="default"
-                  title="العودة إلى موقعك"
-                  className="h-10 w-10"
-                >
-                  <span className="text-xl">🎯</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-
-      {/* Main Content - Column Layout */}
-      <div className="flex flex-col gap-6 p-6">
-        {/* Map Section - Top */}
-        <div className="w-full">
+      {/* Main Content */}
+      <div className="flex flex-col lg:flex-row gap-6 p-6">
+        {/* Map Section */}
+        <div className="w-full lg:w-1/2 relative">
           <div
             ref={mapRefCallback}
-            className="w-full h-[400px] rounded-xl border border-border shadow-lg bg-muted/30"
+            className="w-full h-[400px] lg:h-[500px] rounded-xl border border-border shadow-lg bg-muted/30"
             style={{ minHeight: '400px' }}
           />
+
+          {/* Map Overlay Loader */}
+          <MapOverlayLoader progress={locationProgress} />
+
+          {isMapLoading && <MapLoadingSkeleton />}
         </div>
 
-        {/* Location Information Panel - Bottom */}
-        <div className="w-full">
-          <div className="space-y-4">
-            {/* Location Cards Stack */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Current Location Card */}
-              <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary text-lg">📍</span>
-                  </div>
-                  <div className="text-right min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        الموقع التلقائي
-                        {userLocation && (
-                          <span className="text-xs font-mono text-muted-foreground ml-2">
-                            ({userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)})
-                          </span>
-                        )}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        {userLocation ? (
-                          <div className="flex items-center gap-1">
-                            {userLocation.accuracy && (
-                              <span className={`text-xs ${userLocation.accuracy <= 20
-                                ? 'text-green-500'
-                                : 'text-red-500'
-                                }`}>
-                                <div className={`w-2 h-2 rounded-full animate-pulse ${userLocation.accuracy <= 20 ? 'bg-green-500' : 'bg-red-500'
-                                  }`}></div>
-                                ±{userLocation.accuracy.toFixed(1)}م
-                              </span>
-                            )}
-                            <Button
-                              onClick={refreshUserLocation}
-                              size="icon"
-                              variant="ghost"
-                              title="تحديث الموقع"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                            >
-                              <span className="text-xs">🔄</span>
-                            </Button>   </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-yellow-600">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                              جاري التحديد...
-                            </span>
-                          </div>
-                        )}
+        {/* Location Information Panel */}
+        <div className="w-full lg:w-1/2">
+          {/* Map Hint */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <span className="text-sm">💡</span>
+            <span>انقر على الخريطة لتحديد موقع التوصيل بدقة، أو اسحب العلامة الحمراء لتغيير الموقع • ملء البيانات الصحيحة يساعد في تسريع عملية التوصيل</span>
+          </div>
 
-                      </div>
-                    </div>
-                    {userLocation ? (
-                      <div className="space-y-2">
-                        {userAddress && (
-                          <div className="bg-muted/50 rounded px-3 py-2">
-                            <div className="text-xs text-muted-foreground mb-1">العنوان</div>
-                            <div className="text-xs text-foreground truncate">
-                              📍 {userAddress}
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                        <span>جاري تحديد موقعك...</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Selected Location Card */}
-              <div className="bg-card rounded-xl p-4 border border-border shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-destructive text-lg">📍</span>
-                  </div>
-                  <div className="text-right min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        الموقع المحدد
-                        {selectedLocation && (
-                          <span className="text-xs font-mono text-muted-foreground ml-2">
-                            ({selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)})
-                          </span>
-                        )}
-                      </h4>
-                      {selectedLocation && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                          <span className="text-xs text-muted-foreground">تم التحديد يدوياً</span>
-                        </div>
-                      )}
-                    </div>
-                    {selectedLocation ? (
-                      <div className="space-y-2">
-                        <div className="bg-muted/50 rounded px-3 py-2">
-                          <div className="text-xs text-muted-foreground mb-1">العنوان</div>
-                          <Input
-                            value={editableAddress}
-                            onChange={(e) => setEditableAddress(e.target.value)}
-                            placeholder="أدخل العنوان المطلوب"
-                            className="text-xs text-primary border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                            dir="rtl"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        انقر على الخريطة لتحديد موقع العميل
-                      </div>
-                    )}
-                  </div>
-                </div>
+          {isMapLoading ? (
+            <LocationCardSkeleton />
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <LocationCard
+                  userLocation={userLocation}
+                  selectedLocation={selectedLocation}
+                  editableAddress={editableAddress}
+                  setEditableAddress={setEditableAddress}
+                  landmark={landmark}
+                  setLandmark={setLandmark}
+                  deliveryNote={deliveryNote}
+                  setDeliveryNote={setDeliveryNote}
+                  onRecenter={recenterToUserLocation}
+                  onSave={handleSaveLocation}
+                  onClear={handleClearFields}
+                  locationProgress={locationProgress}
+                />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Section */}
-      <div className="border-t border-border bg-muted/30 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {selectedLocation ? (
-              <span>تم تحديد الموقع بنجاح</span>
-            ) : (
-              <span>يرجى تحديد موقعك على الخريطة</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // Reset to user location
-                if (userLocation) {
-                  recenterToUserLocation();
-                }
-              }}
-              disabled={!userLocation}
-              className="text-xs"
-            >
-              إعادة تعيين
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                if (selectedLocation) {
-                  // Here you can add the logic to save the location
-                  console.log('Saving location:', {
-                    coordinates: selectedLocation,
-                    address: editableAddress,
-                    userLocation: userLocation
-                  });
-                  // You can add a toast notification or API call here
-                  alert('تم حفظ الموقع بنجاح!');
-                }
-              }}
-              disabled={!selectedLocation}
-              className="text-xs"
-            >
-              حفظ الموقع
-            </Button>
-          </div>
+          )}
         </div>
       </div>
     </Card>
