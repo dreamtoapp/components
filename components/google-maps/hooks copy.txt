@@ -3,7 +3,7 @@ import { Location, GoogleMapsMap, GoogleMapsMarker, GoogleMapsMapMouseEvent } fr
 
 // Hook for Google Maps API
 export const useGoogleMaps = () => {
-  const getGoogleMaps = useCallback((): any => {
+  const getGoogleMaps = useCallback((): unknown => {
     if (typeof window === 'undefined' || !window.google) {
       return null;
     }
@@ -224,7 +224,7 @@ const getLocationWithProgressiveAccuracy = async (): Promise<GeolocationPosition
 
     console.log('Moderate accuracy achieved:', position.coords.accuracy, 'meters');
     return position;
-  } catch (error) {
+  } catch (_error) {
     console.warn('High accuracy failed, trying fallback strategy');
   }
 
@@ -315,7 +315,7 @@ export const useGeolocation = () => {
       }
       return null;
     }
-  }, [getAddressFromCoordinates, createUserMarker, createSelectedMarker]);
+  }, [getAddressFromCoordinates, createUserMarker, createSelectedMarker]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { getUserLocation };
 };

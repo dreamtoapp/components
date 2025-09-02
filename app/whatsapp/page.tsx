@@ -11,8 +11,8 @@ import { Phone, MessageCircle, Send, Shield, CheckCircle, XCircle, AlertCircle }
 
 // Import external WhatsApp logic
 import { WHATSAPP_CONFIG } from './helpers/config';
-import { useWhatsAppChat, useWhatsAppOTP, useWhatsAppMessaging } from './helpers/hooks';
-import { sendTemplateMessage, sendOTPViaTemplate, sendOTPViaSession } from './actions/sendOtp';
+import { useWhatsAppChat, useWhatsAppOTP, useWhatsAppMessaging, useWhatsAppSessionOTP } from './helpers/hooks';
+
 
 export default function WhatsAppPage() {
   const [phoneNumber, setPhoneNumber] = useState('966502699023');
@@ -39,13 +39,9 @@ export default function WhatsAppPage() {
     setOtp
   } = useWhatsAppOTP();
 
-  const {
-    sendMessage,
-    sendTestMessage,
-    sendSimpleTextMessage,
-    sendHelloWorldTemplate,
-    sendAutomatedReply
-  } = useWhatsAppMessaging();
+  const { sendOTPViaSession } = useWhatsAppSessionOTP();
+
+  const { sendMessage, sendAutomatedReply } = useWhatsAppMessaging();
 
   // Handler functions using the new hooks
   const handleSendOtp = async () => {
@@ -344,7 +340,7 @@ export default function WhatsAppPage() {
                           try {
                             setLoading(true);
                             clearError();
-                            const result = await sendOTPViaTemplate(phoneNumber);
+                            const result = await sendOTP(phoneNumber);
                             alert(`🎯 TEMPLATE OTP SENT!\n\nPhone: ${phoneNumber}\nCode: ${result.otp}\n\nCheck your WhatsApp!`);
                             addMessage({
                               id: Date.now().toString(),
@@ -457,7 +453,7 @@ export default function WhatsAppPage() {
                               try {
                                 await navigator.clipboard.writeText(statusMessage);
                                 alert(`✅ Template Status Copied to Clipboard!\n\n${statusMessage}\n\n📋 Results copied - you can paste them now!`);
-                              } catch (clipboardError) {
+                              } catch {
                                 alert(`🔐 Template Status:\n\n${statusMessage}\n\n📋 Copy the text above manually`);
                               }
 
@@ -475,7 +471,7 @@ export default function WhatsAppPage() {
                               try {
                                 await navigator.clipboard.writeText(errorMessage);
                                 alert(`❌ Template Status Error Copied to Clipboard!\n\n${errorMessage}\n\n📋 Error details copied - you can paste them now!`);
-                              } catch (clipboardError) {
+                              } catch {
                                 alert(`❌ Template Status Error:\n\n${errorMessage}\n\n📋 Copy the error details above manually`);
                               }
 

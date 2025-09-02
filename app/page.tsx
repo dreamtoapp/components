@@ -65,7 +65,7 @@ export default function Home() {
         clientAddress={address}
         clientLandmark={landmark}
         clientDeliveryNote={deliveryNote}
-        clientLocation={coordinates as any}
+        clientLocation={coordinates ?? undefined}
         onSave={handleSave}
       />
 

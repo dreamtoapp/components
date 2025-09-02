@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ModeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   return (

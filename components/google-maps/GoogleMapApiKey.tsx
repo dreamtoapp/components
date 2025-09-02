@@ -83,9 +83,7 @@ export default function GoogleMapSimple({
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<GoogleMapsMarker | null>(null);
 
-  // Address states
-  const [userAddress, setUserAddress] = useState<string | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  // Address states (removed unused address display to satisfy lint)
   const [editableAddress, setEditableAddress] = useState<string>(clientAddress ?? "");
 
   // Form states
@@ -99,7 +97,7 @@ export default function GoogleMapSimple({
   // Hooks
   const { getGoogleMaps } = useGoogleMaps();
   const { getAddressFromCoordinates } = useGeocoding();
-  const { createUserMarker, createSelectedMarker } = useMarkerCreation();
+  const { createSelectedMarker } = useMarkerCreation();
   const { getUserLocation } = useGeolocation();
 
   // Map initialization
@@ -108,32 +106,51 @@ export default function GoogleMapSimple({
       return;
     }
 
-    const google = getGoogleMaps();
-    if (!google?.maps?.Map) {
+    type GoogleLike = {
+      maps?: {
+        Map?: unknown;
+        ControlPosition?: unknown;
+        event?: unknown;
+        Animation?: unknown;
+        SymbolPath?: unknown;
+      }
+    };
+    const google = getGoogleMaps() as GoogleLike;
+    type MapsNamespace = {
+      Map: new (el: HTMLElement, opts: unknown) => unknown;
+      ControlPosition: unknown;
+      event?: { removeListener: (l: unknown) => void };
+      Animation?: unknown;
+      SymbolPath?: unknown;
+    };
+    const maps = (google as { maps?: unknown }).maps as MapsNamespace | undefined;
+    if (!maps?.Map) {
       setError("Google Maps API غير متوفر");
       setIsMapLoading(false);
       return;
     }
 
     try {
-      const map = new google.maps.Map(mapRef.current, {
+      const mapsNs = maps as MapsNamespace;
+      const map = new mapsNs.Map(mapRef.current, {
         center: { lat: 20, lng: 0 },
         zoom: 2,
         zoomControl: false,
         mapTypeControl: true,
         mapTypeControlOptions: {
-          position: google.maps.ControlPosition.TOP_LEFT
+          position: (mapsNs.ControlPosition as unknown)
         },
         streetViewControl: false,
         fullscreenControl: false,
         gestureHandling: 'cooperative'
-      });
+      }) as unknown as GoogleMapsMap;
 
       setMapInstance(map);
       setIsMapLoading(false);
 
-      // Add click listener
-      map.addListener('click', async (event: GoogleMapsMapMouseEvent) => {
+      // Add click listener (cast event locally to our type)
+      map.addListener('click', async (evt: unknown) => {
+        const event = evt as GoogleMapsMapMouseEvent;
         if (!event.latLng) return;
 
         try {
@@ -156,16 +173,9 @@ export default function GoogleMapSimple({
           ]);
 
           setSelectedMarker(newSelectedMarker);
-          setSelectedAddress(address);
           setEditableAddress(address);
 
-          return {
-            location: newLocation,
-            address,
-            userMarker: userMarker,
-            selectedMarker: newSelectedMarker
-          };
-
+          // Listener must return void
         } catch (error) {
           console.error('Error handling map click:', error);
           setError("خطأ في تحديد الموقع");
@@ -177,7 +187,7 @@ export default function GoogleMapSimple({
       setError("خطأ في تحميل الخريطة");
       setIsMapLoading(false);
     }
-  }, [getGoogleMaps, clientName, selectedMarker, getAddressFromCoordinates]);
+  }, [getGoogleMaps, clientName, selectedMarker, getAddressFromCoordinates, createSelectedMarker]);
 
   // Load Google Maps API
   const loadGoogleMapsAPI = useCallback(() => {
@@ -185,7 +195,7 @@ export default function GoogleMapSimple({
       return;
     }
 
-    const google = getGoogleMaps();
+    const google = getGoogleMaps() as { maps?: { Map?: unknown } } | null;
     if (google?.maps?.Map) {
       initializeMap();
       return;
@@ -194,8 +204,8 @@ export default function GoogleMapSimple({
     // Check if script is already loading
     if (document.querySelector('script[src*="maps.googleapis.com"]')) {
       const checkInterval = setInterval(() => {
-        const google = getGoogleMaps();
-        if (google?.maps?.Map) {
+        const loaded = getGoogleMaps() as { maps?: { Map?: unknown } } | null;
+        if (loaded?.maps?.Map) {
           clearInterval(checkInterval);
           initializeMap();
         }
@@ -251,17 +261,19 @@ export default function GoogleMapSimple({
       // Clean up markers
       [userMarker, selectedMarker].forEach(marker => {
         if (marker) {
-          const dragStartListener = marker.get('dragStartListener');
-          const dragEndListener = marker.get('dragEndListener');
+          const dragStartListener = marker.get('dragStartListener') as unknown;
+          const dragEndListener = marker.get('dragEndListener') as unknown;
 
           if (dragStartListener) {
-            const google = getGoogleMaps();
+            type GoogleLike = { maps?: { event?: { removeListener: (l: unknown) => void } } };
+            const google = getGoogleMaps() as GoogleLike;
             if (google?.maps?.event) {
               google.maps.event.removeListener(dragStartListener);
             }
           }
           if (dragEndListener) {
-            const google = getGoogleMaps();
+            type GoogleLike = { maps?: { event?: { removeListener: (l: unknown) => void } } };
+            const google = getGoogleMaps() as GoogleLike;
             if (google?.maps?.event) {
               google.maps.event.removeListener(dragEndListener);
             }
@@ -304,10 +316,8 @@ export default function GoogleMapSimple({
       }).then((result) => {
         if (result) {
           setUserLocation(result.location);
-          setUserAddress(result.address);
           setUserMarker(result.userMarker);
           setSelectedLocation(result.location);
-          setSelectedAddress(result.address);
           setEditableAddress(result.address);
           setSelectedMarker(result.selectedMarker);
 
@@ -328,7 +338,7 @@ export default function GoogleMapSimple({
         setError("فشل في تحديد الموقع");
       });
     }
-  }, [mapInstance, userLocation, getUserLocation, clientName]);
+  }, [mapInstance, userLocation, getUserLocation, clientName, clientLocation]);
 
   // Recenter to user location with enhanced accuracy
   const recenterToUserLocation = useCallback(async () => {
@@ -357,7 +367,6 @@ export default function GoogleMapSimple({
       if (result) {
         // Update user location
         setUserLocation(result.location);
-        setUserAddress(result.address);
         setUserMarker(result.userMarker);
 
         // Update selected location
@@ -366,7 +375,6 @@ export default function GoogleMapSimple({
         }
 
         setSelectedLocation(result.location);
-        setSelectedAddress(result.address);
         setEditableAddress(result.address);
         setSelectedMarker(result.selectedMarker);
 
@@ -404,7 +412,7 @@ export default function GoogleMapSimple({
     if (onSave) {
       onSave(locationData);
     }
-  }, [selectedLocation, editableAddress, landmark, deliveryNote, onSave]);
+  }, [selectedLocation, title, editableAddress, landmark, deliveryNote, onSave]);
 
   // Handle form clear
   const handleClearFields = useCallback(() => {

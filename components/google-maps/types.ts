@@ -2,16 +2,16 @@
 export interface GoogleMapsMap {
   setCenter: (center: { lat: number; lng: number }) => void;
   setZoom: (zoom: number) => void;
-  addListener: (event: string, callback: (event: any) => void) => void;
+  addListener: (event: string, callback: (event: unknown) => void) => void;
 }
 
 export interface GoogleMapsMarker {
   setMap: (map: GoogleMapsMap | null) => void;
-  setIcon: (icon: any) => void;
-  setAnimation: (animation: any) => void;
-  addListener: (event: string, callback: (event: any) => void) => void;
-  get: (key: string) => any;
-  set: (key: string, value: any) => void;
+  setIcon: (icon: unknown) => void;
+  setAnimation: (animation: unknown) => void;
+  addListener: (event: string, callback: (event: unknown) => void) => void;
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => void;
 }
 
 export interface GoogleMapsMapMouseEvent {
@@ -122,7 +122,7 @@ export interface LocationCardProps {
 // Global type declarations
 declare global {
   interface Window {
-    google?: any;
+    google?: unknown;
     initMap?: () => void;
   }
 }

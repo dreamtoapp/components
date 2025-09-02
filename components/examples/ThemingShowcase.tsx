@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import React from "react";
@@ -229,7 +230,7 @@ export default function ThemingShowcase() {
           <div>
             <h3 className="text-lg font-semibold mb-2">Usage</h3>
             <div className="bg-muted p-4 rounded-lg font-mono text-sm">
-              <div>// In your components:</div>
+              <div>In your components:</div>
               <div>&lt;div className="bg-background text-foreground"&gt;</div>
               <div>&lt;Button className="bg-primary text-primary-foreground"&gt;</div>
             </div>

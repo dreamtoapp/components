@@ -3,7 +3,7 @@ import { Location, GoogleMapsMap, GoogleMapsMarker, GoogleMapsMapMouseEvent } fr
 
 // Hook for Google Maps API
 export const useGoogleMaps = () => {
-  const getGoogleMaps = useCallback((): any => {
+  const getGoogleMaps = useCallback((): unknown => {
     if (typeof window === 'undefined' || !window.google) {
       return null;
     }
@@ -19,12 +19,18 @@ export const useGeocoding = () => {
 
   const getAddressFromCoordinates = useCallback(async (lat: number, lng: number): Promise<string> => {
     try {
-      const google = getGoogleMaps();
-      if (!google?.maps?.Geocoder) {
+      type MapsNS = {
+        Geocoder?: new () => {
+          geocode: (req: { location: { lat: number; lng: number }; language?: string }) => Promise<{ results: Array<{ address_components: Array<{ types: string[]; long_name: string }> }> }>;
+        };
+      };
+      const google = getGoogleMaps() as { maps?: unknown } | null;
+      const maps = (google as { maps?: unknown })?.maps as MapsNS | undefined;
+      if (!maps?.Geocoder) {
         return 'العنوان غير متوفر';
       }
 
-      const geocoder = new google.maps.Geocoder();
+      const geocoder = new maps.Geocoder();
       const result = await geocoder.geocode({
         location: { lat, lng },
         language: 'ar'
@@ -63,15 +69,30 @@ export const useGeocoding = () => {
 // Hook for marker creation
 export const useMarkerCreation = () => {
   const { getGoogleMaps } = useGoogleMaps();
-  const { getAddressFromCoordinates } = useGeocoding();
+  // const { getAddressFromCoordinates } = useGeocoding();
 
   const createUserMarker = useCallback((location: Location, map: GoogleMapsMap): GoogleMapsMarker => {
-    const google = getGoogleMaps();
-    if (!google?.maps?.Marker) {
+    type MapsNS = {
+      Marker?: new (opts: {
+        position: Location;
+        map: GoogleMapsMap;
+        title?: string;
+        draggable?: boolean;
+        label?: { text: string; color: string; fontWeight: string; fontSize: string };
+        icon?: unknown;
+        zIndex?: number;
+        animation?: unknown;
+      }) => GoogleMapsMarker;
+      SymbolPath?: { CIRCLE: unknown };
+      Animation?: { DROP: unknown; BOUNCE: unknown };
+    };
+    const google = getGoogleMaps() as { maps?: unknown } | null;
+    const maps = (google as { maps?: unknown })?.maps as MapsNS | undefined;
+    if (!maps?.Marker) {
       throw new Error('Google Maps Marker not available');
     }
 
-    const marker = new google.maps.Marker({
+    const marker = new maps.Marker({
       position: location,
       map: map,
       title: "موقعك الحالي",
@@ -82,7 +103,7 @@ export const useMarkerCreation = () => {
         fontSize: "18px"
       },
       icon: {
-        path: google.maps.SymbolPath.CIRCLE,
+        path: maps.SymbolPath?.CIRCLE as unknown,
         fillColor: "hsl(var(--primary))",
         fillOpacity: 0.3,
         strokeColor: "hsl(var(--primary))",
@@ -90,12 +111,12 @@ export const useMarkerCreation = () => {
         scale: 20
       },
       zIndex: 1000,
-      animation: google.maps.Animation.DROP
+      animation: maps.Animation?.DROP as unknown
     });
 
     // Enhanced animation sequence
     setTimeout(() => {
-      marker.setAnimation(google.maps.Animation.BOUNCE);
+      marker.setAnimation(maps.Animation?.BOUNCE as unknown);
       setTimeout(() => {
         marker.setAnimation(null);
         // Add subtle pulsing effect
@@ -106,7 +127,7 @@ export const useMarkerCreation = () => {
             return;
           }
           marker.setIcon({
-            path: google.maps.SymbolPath.CIRCLE,
+            path: maps.SymbolPath?.CIRCLE as unknown,
             fillColor: "hsl(var(--primary))",
             fillOpacity: 0.3,
             strokeColor: "hsl(var(--primary))",
@@ -122,12 +143,26 @@ export const useMarkerCreation = () => {
   }, [getGoogleMaps]);
 
   const createSelectedMarker = useCallback((location: Location, map: GoogleMapsMap, clientName: string): GoogleMapsMarker => {
-    const google = getGoogleMaps();
-    if (!google?.maps?.Marker) {
+    type MapsNS = {
+      Marker?: new (opts: {
+        position: Location;
+        map: GoogleMapsMap;
+        title?: string;
+        draggable?: boolean;
+        label?: { text: string; color: string; fontWeight: string; fontSize: string };
+        icon?: unknown;
+        zIndex?: number;
+      }) => GoogleMapsMarker;
+      SymbolPath?: { CIRCLE: unknown };
+      Animation?: { BOUNCE: unknown };
+    };
+    const google = getGoogleMaps() as { maps?: unknown } | null;
+    const maps = (google as { maps?: unknown })?.maps as MapsNS | undefined;
+    if (!maps?.Marker) {
       throw new Error('Google Maps Marker not available');
     }
 
-    const marker = new google.maps.Marker({
+    const marker = new maps.Marker({
       position: location,
       map: map,
       title: `${clientName} - الموقع المحدد`,
@@ -139,7 +174,7 @@ export const useMarkerCreation = () => {
         fontSize: "16px"
       },
       icon: {
-        path: google.maps.SymbolPath.CIRCLE,
+        path: maps.SymbolPath?.CIRCLE as unknown,
         fillColor: "hsl(var(--destructive))",
         fillOpacity: 0.3,
         strokeColor: "hsl(var(--destructive))",
@@ -152,21 +187,22 @@ export const useMarkerCreation = () => {
     // Add drag listeners
     const dragStartListener = marker.addListener('dragstart', () => {
       marker.setIcon({
-        path: google.maps.SymbolPath.CIRCLE,
+        path: maps.SymbolPath?.CIRCLE as unknown,
         fillColor: "hsl(var(--warning))",
         fillOpacity: 0.3,
         strokeColor: "hsl(var(--warning))",
         strokeWeight: 3,
         scale: 22
       });
-      marker.setAnimation(google.maps.Animation.BOUNCE);
+      marker.setAnimation(maps.Animation?.BOUNCE as unknown);
     });
 
-    const dragEndListener = marker.addListener('dragend', async (dragEvent: GoogleMapsMapMouseEvent) => {
+    const dragEndListener = marker.addListener('dragend', async (evt: unknown) => {
+      const dragEvent = evt as GoogleMapsMapMouseEvent;
       if (!dragEvent.latLng) return;
 
       marker.setIcon({
-        path: google.maps.SymbolPath.CIRCLE,
+        path: maps.SymbolPath?.CIRCLE as unknown,
         fillColor: "hsl(var(--destructive))",
         fillOpacity: 0.3,
         strokeColor: "hsl(var(--destructive))",
@@ -190,7 +226,7 @@ export const useMarkerCreation = () => {
     marker.set('dragEndListener', dragEndListener);
 
     return marker;
-  }, [getGoogleMaps, getAddressFromCoordinates]);
+  }, [getGoogleMaps]);
 
   return { createUserMarker, createSelectedMarker };
 };
@@ -211,7 +247,7 @@ const getHighAccuracyLocation = async (onProgress?: (position: GeolocationPositi
     let attempts = 0;
     const maxAttempts = 3;
     const targetAccuracy = 5; // Target 5 meters accuracy
-    let watchId: number;
+    let watchId = 0;
 
     // Timeout for the entire process
     const overallTimeout = setTimeout(() => {
@@ -409,7 +445,7 @@ export const useGeolocation = () => {
         throw fallbackError;
       }
     }
-  }, [getAddressFromCoordinates, createUserMarker, createSelectedMarker]);
+  }, [createUserMarker, createSelectedMarker, getAddressFromCoordinates]);
 
   // Method to retry location with user feedback
   const retryLocation = useCallback(async (

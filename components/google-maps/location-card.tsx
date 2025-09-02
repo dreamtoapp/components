@@ -1,7 +1,7 @@
 import React from 'react';
 import { LocationCardProps } from './types';
 import { AutoLocationRow } from './auto-location-row';
-import { SelectedLocationHeader } from './selected-location-header';
+// import { SelectedLocationHeader } from './selected-location-header';
 import { LocationForm } from './location-form';
 
 // Location Card Component

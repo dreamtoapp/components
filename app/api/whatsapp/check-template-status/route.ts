@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextResponse } from 'next/server';
 import axios from 'axios';
 
 // Hardcoded test config (same as sendOtp.ts)
@@ -61,7 +62,7 @@ export async function GET() {
         availableTemplates: templates.map((t: any) => ({ name: t.name, status: t.status, category: t.category }))
       });
 
-    } catch (templateError) {
+    } catch {
       console.log('🔐 AUTHENTICATION: Template API not accessible, trying direct test...');
 
       // If template API fails, try a direct template message test

@@ -6,6 +6,7 @@ import { LocationFormProps } from './types';
 // Location Form Component
 export const LocationForm = ({
   selectedLocation,
+  userLocation,
   title,
   setTitle,
   editableAddress,
@@ -14,7 +15,6 @@ export const LocationForm = ({
   setLandmark,
   deliveryNote,
   setDeliveryNote,
-  onRecenter,
   onSave,
   onClear
 }: LocationFormProps) => {

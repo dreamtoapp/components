@@ -1,7 +1,7 @@
 "use server"
 
 import axios from 'axios';
-import { WHATSAPP_CONFIG } from '../helpers/config';
+// import { WHATSAPP_CONFIG } from '../helpers/config';
 import { formatPhoneNumber, generateOTP, logDebug, logError, logSuccess } from '../helpers/utils';
 
 
@@ -17,7 +17,7 @@ const TEST_CONFIG = {
 };
 
 
-export async function sendTemplateMessage(phoneNumber: string) {
+export async function sendTemplateMessage() {
   try {
     // Hardcoded phone number for testing
     const formattedPhone = "966502699023"; // Your phone number
@@ -146,11 +146,12 @@ export async function sendOTPViaTemplate(phoneNumber: string) {
   } catch (error) {
     logError('🔐 AUTHENTICATION: Failed to send OTP via template', error);
 
-    // Enhanced error details for debugging
+    // Enhanced error details for debugging without using any
+    const maybeAxiosError = error as { response?: { data?: unknown; status?: number } };
     const errorDetails = {
       message: error instanceof Error ? error.message : 'Unknown error',
-      response: (error as any)?.response?.data,
-      status: (error as any)?.response?.status,
+      response: maybeAxiosError.response?.data,
+      status: maybeAxiosError.response?.status,
       template: 'confirm',
       language: 'ar'
     };

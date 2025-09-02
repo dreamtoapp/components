@@ -137,3 +137,15 @@ export const useWhatsAppMessaging = () => {
     sendAutomatedReply
   };
 };
+
+// Convenience wrapper for session OTP (reuses existing sendOTP)
+export const useWhatsAppSessionOTP = () => {
+  const { sendOTP } = useWhatsAppOTP();
+  const sendOTPViaSession = useCallback(async (phoneNumber: string) => {
+    // For now, this simply calls sendOTP; session behavior can be added later
+    const result = await sendOTP(phoneNumber);
+    return result;
+  }, [sendOTP]);
+
+  return { sendOTPViaSession };
+};
